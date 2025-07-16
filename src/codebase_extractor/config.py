@@ -5,6 +5,7 @@ import sys
 SCRIPT_VERSION = "1.0.0"
 GITHUB_URL = "https://github.com/lukaszlekowski/codebase-extractor"
 LINKEDIN_URL = "https://www.linkedin.com/in/lukasz-lekowski"
+PYPI_URL = "https://pypi.org/project/codebase-extractor/"
 SCRIPT_FILENAME = Path(sys.argv[0]).name
 OUTPUT_DIR_NAME = "CODEBASE_EXTRACTS"
 

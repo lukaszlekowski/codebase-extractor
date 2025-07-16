@@ -38,6 +38,17 @@ The tool is highly configurable, allowing you to select specific folders, exclud
 
 ---
 
+## 💻 Presentation
+
+<details>
+  <summary>Show Gallery</summary>
+<img src="images/welcome.png" width="330">
+  <img src="images/instructions.png" width="330">
+  <img src="images/file_tree.png" width="330">
+  <img src="images/extraction.png" width="330">
+
+</details>
+
 ## 🚀 Installation
 
 This guide will walk you through installing and running the Codebase Extractor.

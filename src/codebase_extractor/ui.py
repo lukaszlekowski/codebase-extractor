@@ -32,7 +32,7 @@ def clear_screen():
     """Clears the terminal screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_banner():
+def print_banner(no_instructions: bool = False):
     """Prints a banner that adjusts to the terminal width."""
     try:
         width = shutil.get_terminal_size((80, 20)).columns
@@ -45,7 +45,12 @@ def print_banner():
         print(LOGO_SMALL)
 
     print(colored(f" Welcome to Code Extractor v{config.SCRIPT_VERSION} by Lukasz Lekowski ".center(width, "="), "white", "on_magenta"))
-
+    
+    # This conditional logic was missing
+    if not no_instructions:
+        print("\nThis tool constructs a detailed, single-file representation of a project's codebase.")
+        print("It's ideal for providing context to AI models, archiving projects, or generating documentation.")
+    
 def show_instructions():
     """Clears screen and shows detailed instructions, pausing for user input."""
     try:
@@ -82,3 +87,21 @@ def show_instructions():
 
     input(colored("\nReady? Press Enter to begin...", "green"))
     clear_screen()
+
+def print_footer():
+    """Prints the final footer with links and credits."""
+    try:
+        width = shutil.get_terminal_size((80, 20)).columns
+    except OSError:
+        width = 80
+        
+    print("\n")
+    print("-" * width)
+    print("📦 Find this project on PyPI:")
+    print(config.PYPI_URL + "\n")
+    print("💡 Love this tool? Found a bug? Share your feedback on GitHub:")
+    print(config.GITHUB_URL + "\n")
+    print("🤝 Connect with the author on LinkedIn:")
+    print(config.LINKEDIN_URL + "\n")
+    print("☕ Enjoying this tool? You can support its development with a coffee!")
+    print("https://www.buymeacoffee.com/lukaszlekowski\n")
