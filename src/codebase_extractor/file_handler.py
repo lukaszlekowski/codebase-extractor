@@ -1,10 +1,13 @@
 import os
 import datetime
 import uuid
+import logging
 from pathlib import Path
 from termcolor import colored
 from . import config
+from . import __version__  
 import questionary
+
 
 def get_folder_choices(root_path: Path, max_depth: int) -> list:
     """Recursively finds folders up to a max depth and prepares them for questionary."""
@@ -73,9 +76,10 @@ def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int):
                     content += "\n```\n\n"
                     extracted_files += 1
                 except Exception as e:
+                    logging.warning(f"Could not read file {item.name}: {e}")
                     content += f"\n\n"
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
-        print(colored(f"> Caution: Large file count in '{folder.name}' ({extracted_files} files).", "yellow"))
+        logging.warning(colored(f"> Caution: Large file count in '{folder.name}' ({extracted_files} files).", "yellow"))
     return content, extracted_files
 
 
@@ -92,13 +96,13 @@ def extract_code_from_root(root_path: Path, exclude_large: bool) -> (str, int):
             content += "\n```\n\n"
             extracted_files += 1
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
-        print(colored(f"> Caution: Large file count in root ({extracted_files} files).", "yellow"))
+        logging.warning(colored(f"> Caution: Large file count in root ({extracted_files} files).", "yellow"))
     return content, extracted_files
 
 
-def write_to_markdown_file(content: str, metadata: dict, root_path: Path):
+def write_to_markdown_file(content: str, metadata: dict, root_path: Path, output_dir_name: str):
     """Constructs a YAML header and writes the full content to a timestamped Markdown file."""
-    output_dir = Path(config.OUTPUT_DIR_NAME)
+    output_dir = Path(output_dir_name)
     output_dir.mkdir(exist_ok=True)
     
     timestamp = datetime.datetime.fromisoformat(metadata['run_timestamp']).strftime("%Y%m%d_%H%M%S")
@@ -120,7 +124,7 @@ extraction_details:
   file_count: {metadata['file_count']}
 tool_details:
   name: "Codebase Extractor"
-  version: "{config.SCRIPT_VERSION}"
+  version: "{__version__}"
   source: "{config.GITHUB_URL}"
 ---
 
@@ -129,5 +133,5 @@ tool_details:
     with open(full_filepath, "w", encoding="utf-8") as f:
         f.write(full_content)
     
-    print(f"\n💾 Saved to {colored(str(full_filepath), 'cyan')}")
+    logging.info(f"\n💾 Saved to {colored(str(full_filepath), 'cyan')}")
     return str(full_filepath)

@@ -1,7 +1,10 @@
 import os
 import shutil
 from . import config
+from . import __version__  
 from termcolor import colored
+
+# ... (LOGO_LARGE and LOGO_SMALL strings remain the same) ...
 
 LOGO_LARGE = """
  ██████╗ ██████╗ ██████╗ ███████╗██████╗  █████╗ ███████╗███████╗    ███████╗██╗  ██╗████████╗██████╗  █████╗  ██████╗████████╗ ██████╗ ██████╗ 
@@ -44,14 +47,14 @@ def print_banner(no_instructions: bool = False):
     else:
         print(LOGO_SMALL)
 
-    print(colored(f" Welcome to Code Extractor v{config.SCRIPT_VERSION} by Lukasz Lekowski ".center(width, "="), "white", "on_magenta"))
+    # Use the imported __version__ variable instead of config.SCRIPT_VERSION
+    print(colored(f" Welcome to Code Extractor v{__version__} by Lukasz Lekowski ".center(width, "="), "white", "on_magenta"))
     
-    # This conditional logic was missing
     if not no_instructions:
-        print("\nThis tool constructs a detailed, single-file representation of a project's codebase.")
+        print("\nThis tool consolidates your project's code into structured Markdown files.")
         print("It's ideal for providing context to AI models, archiving projects, or generating documentation.")
-    
-def show_instructions():
+
+def show_instructions(output_dir_name: str):
     """Clears screen and shows detailed instructions, pausing for user input."""
     try:
         width = shutil.get_terminal_size((80, 20)).columns
@@ -80,7 +83,7 @@ def show_instructions():
     print("  - The 'root [...]' option specifically extracts *only* the files in your project's main directory.\n")
     
     print(colored("--- Output Details ---", "yellow"))
-    print(f"All extracted content is saved into the '{config.OUTPUT_DIR_NAME}' directory. Each Markdown file generated will contain a YAML metadata header at the top with a unique reference ID, a timestamp, and more.\n")
+    print(f"All extracted content is saved into the '{output_dir_name}' directory. Each Markdown file generated will contain a YAML metadata header at the top with a unique reference ID, a timestamp, and more.\n")
     
     tip = "TIP: Run this script with the --no-instructions or -ni flag to skip this guide."
     print(colored(tip, "black", "on_yellow"))

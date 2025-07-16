@@ -4,7 +4,10 @@ import time
 import datetime
 import uuid
 import shutil
+import argparse
+import logging
 from pathlib import Path
+from typing import List, Optional
 
 import questionary
 from halo import Halo
@@ -16,7 +19,7 @@ from questionary import Validator, ValidationError
 from . import config
 from . import ui
 from . import file_handler
-from . import cli  # <-- New import
+from . import cli
 
 class NumberValidator(Validator):
     """Validates that the input is a positive integer."""
@@ -32,58 +35,74 @@ class NumberValidator(Validator):
                 message="Please enter a valid number.",
                 cursor_position=len(document.text))
 
+def setup_logging(verbose: bool, log_file: str = None):
+    """Configures the logging system."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+    # Use a basic formatter; we will use termcolor for status messages
+    log_format = logging.Formatter('%(message)s')
+    
+    # Get root logger
+    logger = logging.getLogger()
+    # Remove any existing handlers to avoid duplicate messages
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    logger.setLevel(log_level)
+    
+    # Console handler
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(log_format)
+    logger.addHandler(stream_handler)
+
+    # File handler
+    if log_file:
+        file_handler_log = logging.FileHandler(log_file)
+        file_handler_log.setFormatter(log_format)
+        logger.addHandler(file_handler_log)
+
 def main():
     """Main function to run the CLI application."""
     exit_message = colored("\nExtraction aborted by user. Closing Code Extractor. Goodbye.", "red")
 
     try:
-        # The argparse logic is now neatly contained in the cli module.
         args = cli.parse_arguments()
-        
-        # Override config defaults with args if provided
-        if args.output_dir:
-            config.OUTPUT_DIR_NAME = args.output_dir
-            # Also update the exclusion list to match
-            config.EXCLUDED_DIRS.add(args.output_dir)
+        setup_logging(args.verbose, args.log_file)
 
+        output_dir_name = args.output_dir if args.output_dir else config.OUTPUT_DIR_NAME
+        config.EXCLUDED_DIRS.add(output_dir_name)
+
+        root_path = args.root.resolve() if args.root else Path.cwd()
+        if not root_path.is_dir():
+            logging.error(colored(f"Error: The provided root path is not a valid directory: {root_path}", "red"))
+            return
+        
         ui.clear_screen()
         ui.print_banner(no_instructions=args.no_instructions)
         
         if not args.no_instructions:
-            ui.show_instructions()
+            ui.show_instructions(output_dir_name)
         else:
             input(colored("\nPress Enter to begin...", "green"))
             ui.clear_screen()
-
-        # Use the path from args, which defaults to the current directory
-        root_path = args.root.resolve()
-        if not root_path.is_dir():
-            print(colored(f"Error: The provided root path is not a valid directory: {root_path}", "red"))
-            return
-
+        
         select_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:black bg:#FFA500'), ('selected', 'fg:black bg:#FFA500')])
         checkbox_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:#FFA500'), ('selected', 'fg:#FFA500'), ('checkbox-selected', 'fg:#FFA500')])
-        
-        # --- Start collecting settings ---
-        
-        # Use args if provided, otherwise ask the user
-        exclude_large = args.exclude_large_files if args.mode else questionary.select(
-            "[1/2] -- Exclude files larger than 1MB?", 
-            choices=["yes", "no"], 
-            style=select_style, 
-            instruction=" "
-        ).ask()
-        if exclude_large is None: raise KeyboardInterrupt
-        exclude_large = exclude_large == "yes"
-        print()
 
-        selection_mode = args.mode if args.mode else questionary.select(
-            "[2/2] -- What do you want to extract?", 
-            choices=["everything", "specific"], 
-            style=select_style, 
-            instruction=" "
-        ).ask()
-        if selection_mode is None: raise KeyboardInterrupt
+        is_non_interactive = args.mode is not None
+
+        if not is_non_interactive:
+            logging.info("=== Extraction Settings ===")
+
+        exclude_large = args.exclude_large_files
+        if not is_non_interactive:
+            exclude_large_choice = questionary.select("[1/2] -- Exclude files larger than 1MB?", choices=["yes", "no"], style=select_style, instruction=" ").ask()
+            if exclude_large_choice is None: raise KeyboardInterrupt
+            exclude_large = exclude_large_choice == "yes"
+            print()
+
+        selection_mode = args.mode
+        if not is_non_interactive:
+            selection_mode = questionary.select("[2/2] -- What do you want to extract?", choices=["everything", "specific"], style=select_style, instruction=" ").ask()
+            if selection_mode is None: raise KeyboardInterrupt
 
         folders_to_process = set()
         process_root_files = False
@@ -94,104 +113,85 @@ def main():
         if selection_mode == "everything":
             folders_to_process.update([p for p in root_path.iterdir() if p.is_dir() and p.name not in config.EXCLUDED_DIRS])
             process_root_files = True
-        else: # 'specific' mode
+        else:
             scan_depth = args.depth
-            if scan_depth is None:
-                depth_str = questionary.text(
-                    "-- How many levels deep should we scan for folders?",
-                    default="3",
-                    validate=NumberValidator,
-                    style=select_style
-                ).ask()
+            if scan_depth is None and not is_non_interactive:
+                depth_str = questionary.text("-- How many levels deep should we scan for folders?", default="3", validate=NumberValidator, style=select_style).ask()
                 if depth_str is None: raise KeyboardInterrupt
                 scan_depth = int(depth_str)
-            
-            # Use args for folder selection if provided, otherwise show prompt
-            if args.select_folders or args.select_root:
-                if args.select_root:
-                    process_root_files = True
-                selected_paths_from_args = [root_path / p for p in args.select_folders]
-                folders_to_process.update(selected_paths_from_args)
-            else:
-                folder_choices = file_handler.get_folder_choices(root_path, max_depth=scan_depth)
-                selected_options = None
-                confirm_exit = False
-                checkbox_instruction = "(Arrows to move, Space to select, A to toggle, I to invert)"
-                
-                while not selected_options:
-                    selection = questionary.checkbox(
-                        "-- Select folders/sub-folders to extract (must select at least one):", 
-                        choices=folder_choices, 
-                        style=checkbox_style,
-                        instruction=checkbox_instruction
-                    ).ask()
-                    if selection is None:
-                        if confirm_exit: raise KeyboardInterrupt
-                        confirm_exit = True
-                        print(colored("\n[!] Press Ctrl+C again to exit.", "yellow"))
-                        continue
-                    confirm_exit = False
-                    if not selection:
-                        print(colored("[!] Error: You must make a selection.", "red"))
-                        continue
-                    selected_options = selection
-                    break
-                
-                if "ROOT_SENTINEL" in selected_options:
-                    process_root_files = True
-                    selected_options.remove("ROOT_SENTINEL")
-                
-                selected_paths = [root_path / p for p in selected_options]
-                sorted_paths = sorted(selected_paths, key=lambda p: len(p.parts))
-                
-                final_paths = set()
-                for path in sorted_paths:
-                    if not any(path.is_relative_to(parent) for parent in final_paths):
-                        final_paths.add(path)
-                folders_to_process.update(final_paths)
+            elif scan_depth is None:
+                scan_depth = 3
 
-        print()
+            selected_paths = []
+            if args.select_folders or args.select_root:
+                if args.select_root: process_root_files = True
+                selected_paths = [root_path / p for p in args.select_folders]
+            elif not is_non_interactive:
+                folder_choices = file_handler.get_folder_choices(root_path, max_depth=scan_depth)
+                selected_options = questionary.checkbox("-- Select folders/sub-folders to extract:", choices=folder_choices, style=checkbox_style, instruction="(Arrows to move, Space to select, A to toggle, I to invert)").ask()
+                if selected_options is None: raise KeyboardInterrupt
+                if "ROOT_SENTINEL" in selected_options:
+                    process_root_files = True; selected_options.remove("ROOT_SENTINEL")
+                selected_paths = [root_path / p for p in selected_options]
+            
+            sorted_paths = sorted(selected_paths, key=lambda p: len(p.parts))
+            final_paths = set()
+            for path in sorted_paths:
+                if not any(path.is_relative_to(parent) for parent in final_paths): final_paths.add(path)
+            folders_to_process.update(final_paths)
+
+        if not is_non_interactive: print()
         total_files_extracted = 0
 
         for folder_path in sorted(list(folders_to_process)):
             with Halo(text=f"Extracting {folder_path.relative_to(root_path)}...", spinner="dots"):
                 time.sleep(0.1)
                 folder_md, folder_count = file_handler.extract_code_from_folder(folder_path, exclude_large)
+            
             if folder_count > 0:
                 metadata = {"run_ref": run_ref, "run_timestamp": run_timestamp, "folder_name": str(folder_path.relative_to(root_path)), "file_count": folder_count}
-                file_handler.write_to_markdown_file(folder_md, metadata, root_path)
+                if not args.dry_run:
+                    file_handler.write_to_markdown_file(folder_md, metadata, root_path, output_dir_name)
+                logging.info(f"✅ Extracted {folder_count} file(s) from: {folder_path.relative_to(root_path)}")
+                if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
                 total_files_extracted += folder_count
-                print(f"✅ Extracted {folder_count} file(s) from: {folder_path.relative_to(root_path)}\n")
             else:
-                print(f"[!] No extractable files in: {folder_path.relative_to(root_path)}\n")
+                logging.warning(f"[!] No extractable files in: {folder_path.relative_to(root_path)}")
+            logging.info("")
 
         if process_root_files:
             root_display_name = f"root [{root_path.name}] (files in root folder only, excl. sub-folders)"
             with Halo(text=f"Extracting {root_display_name}...", spinner="dots"):
                 time.sleep(0.1)
                 root_md, root_count = file_handler.extract_code_from_root(root_path, exclude_large)
+            
             if root_count > 0:
                 metadata = {"run_ref": run_ref, "run_timestamp": run_timestamp, "folder_name": root_display_name, "file_count": root_count}
-                file_handler.write_to_markdown_file(root_md, metadata, root_path)
+                if not args.dry_run:
+                    file_handler.write_to_markdown_file(root_md, metadata, root_path, output_dir_name)
                 total_files_extracted += root_count
-                print(f"✅ Extracted {root_count} file(s) from the root directory\n")
+                logging.info(f"✅ Extracted {root_count} file(s) from the root directory")
+                if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
             else:
-                print("[!] No extractable files in the root directory\n")
+                logging.warning("[!] No extractable files in the root directory")
+            logging.info("")
         
-        try:
-            width = shutil.get_terminal_size((80, 20)).columns
-        except OSError:
-            width = 80
-
         if total_files_extracted > 0:
-            output_dir_path = Path(config.OUTPUT_DIR_NAME).resolve()
-            print(colored(f"Success! A total of {total_files_extracted} file(s) have been extracted.", "grey", "on_green"))
-            print(f"Files saved in: {colored(str(output_dir_path), 'cyan')}")
+            output_dir_path = Path(output_dir_name).resolve()
+            logging.info(colored(f"Success! A total of {total_files_extracted} file(s) have been extracted.", "grey", "on_green"))
+            if not args.dry_run:
+                logging.info(f"Files saved in: {colored(str(output_dir_path), 'green')}")
         else:
-            print(colored("Extraction complete, but no files matched the criteria.", "yellow"))
+            logging.warning("Extraction complete, but no files matched the criteria.")
         
         ui.print_footer()
 
     except KeyboardInterrupt:
         print(exit_message)
         sys.exit(0)
+    except Exception as e:
+        # This will now print the actual error instead of just aborting
+        logging.error(colored(f"\n[!] An unexpected error occurred: {e}", "red"))
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

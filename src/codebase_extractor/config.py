@@ -2,7 +2,6 @@ from pathlib import Path
 import sys
 
 # --- CONFIGURATION ---
-SCRIPT_VERSION = "1.0.0"
 GITHUB_URL = "https://github.com/lukaszlekowski/codebase-extractor"
 LINKEDIN_URL = "https://www.linkedin.com/in/lukasz-lekowski"
 PYPI_URL = "https://pypi.org/project/codebase-extractor/"
@@ -13,7 +12,6 @@ OUTPUT_DIR_NAME = "CODEBASE_EXTRACTS"
 EXCLUDED_DIRS = {
     "node_modules", "vendor", "__pycache__", "dist", "build", "target", ".next",
     ".git", ".svn", ".hg", ".vscode", ".idea", "venv", ".venv",
-    OUTPUT_DIR_NAME,
 }
 EXCLUDED_FILENAMES = {
     "package-lock.json", "yarn.lock", "composer.lock", ".env"
