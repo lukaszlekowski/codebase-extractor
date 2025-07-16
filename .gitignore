@@ -40,3 +40,6 @@ CODEBASE_EXTRACTS/
 
 # macOS
 .DS_Store
+
+# PM file * directories
+PM_docs
