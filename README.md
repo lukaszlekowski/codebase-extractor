@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://pypi.org/project/codebase-extractor/"><img src="https://badge.fury.io/py/codebase-extractor.svg" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/codebase-extractor/"><img src="https://img.shields.io/pypi/dm/codebase-extractor" alt="PyPI Downloads"></a>
   <img src="https://img.shields.io/badge/python-3.9%2B-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/License-MIT%20(Modified)-yellow.svg" alt="License: MIT (Modified)">
 </p>

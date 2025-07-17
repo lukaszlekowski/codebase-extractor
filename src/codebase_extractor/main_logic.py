@@ -38,26 +38,25 @@ class NumberValidator(Validator):
 def setup_logging(verbose: bool, log_file: str = None):
     """Configures the logging system."""
     log_level = logging.DEBUG if verbose else logging.INFO
-    # Use a basic formatter; we will use termcolor for status messages
     log_format = logging.Formatter('%(message)s')
     
-    # Get root logger
     logger = logging.getLogger()
-    # Remove any existing handlers to avoid duplicate messages
     if logger.hasHandlers():
         logger.handlers.clear()
     logger.setLevel(log_level)
     
-    # Console handler
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(log_format)
     logger.addHandler(stream_handler)
 
-    # File handler
     if log_file:
-        file_handler_log = logging.FileHandler(log_file)
-        file_handler_log.setFormatter(log_format)
-        logger.addHandler(file_handler_log)
+        try:
+            file_handler_log = logging.FileHandler(log_file)
+            file_handler_log.setFormatter(log_format)
+            logger.addHandler(file_handler_log)
+        except Exception as e:
+            logging.error(colored(f"Error: Could not write to log file at {log_file}. {e}", "red"))
+
 
 def main():
     """Main function to run the CLI application."""
@@ -75,32 +74,33 @@ def main():
             logging.error(colored(f"Error: The provided root path is not a valid directory: {root_path}", "red"))
             return
         
-        ui.clear_screen()
-        ui.print_banner(no_instructions=args.no_instructions)
-        
-        if not args.no_instructions:
-            ui.show_instructions(output_dir_name)
-        else:
-            input(colored("\nPress Enter to begin...", "green"))
+        is_fully_automated = args.mode is not None
+
+        # --- Startup Sequence ---
+        if not is_fully_automated:
             ui.clear_screen()
+            ui.print_banner(no_instructions=args.no_instructions)
+            if not args.no_instructions:
+                ui.show_instructions(output_dir_name)
+            else:
+                input(colored("\nPress Enter to begin...", "green"))
+                ui.clear_screen()
+        else:
+            ui.print_banner(no_instructions=True)
         
+        # --- Collect Settings (Interactively or from Args) ---
         select_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:black bg:#FFA500'), ('selected', 'fg:black bg:#FFA500')])
-        checkbox_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:#FFA500'), ('selected', 'fg:#FFA500'), ('checkbox-selected', 'fg:#FFA500')])
-
-        is_non_interactive = args.mode is not None
-
-        if not is_non_interactive:
-            logging.info("=== Extraction Settings ===")
-
+        
         exclude_large = args.exclude_large_files
-        if not is_non_interactive:
+        if not is_fully_automated:
+            logging.info("=== Extraction Settings ===")
             exclude_large_choice = questionary.select("[1/2] -- Exclude files larger than 1MB?", choices=["yes", "no"], style=select_style, instruction=" ").ask()
             if exclude_large_choice is None: raise KeyboardInterrupt
             exclude_large = exclude_large_choice == "yes"
             print()
 
         selection_mode = args.mode
-        if not is_non_interactive:
+        if not is_fully_automated:
             selection_mode = questionary.select("[2/2] -- What do you want to extract?", choices=["everything", "specific"], style=select_style, instruction=" ").ask()
             if selection_mode is None: raise KeyboardInterrupt
 
@@ -113,9 +113,9 @@ def main():
         if selection_mode == "everything":
             folders_to_process.update([p for p in root_path.iterdir() if p.is_dir() and p.name not in config.EXCLUDED_DIRS])
             process_root_files = True
-        else:
+        else: # 'specific' mode
             scan_depth = args.depth
-            if scan_depth is None and not is_non_interactive:
+            if scan_depth is None and not is_fully_automated:
                 depth_str = questionary.text("-- How many levels deep should we scan for folders?", default="3", validate=NumberValidator, style=select_style).ask()
                 if depth_str is None: raise KeyboardInterrupt
                 scan_depth = int(depth_str)
@@ -126,7 +126,8 @@ def main():
             if args.select_folders or args.select_root:
                 if args.select_root: process_root_files = True
                 selected_paths = [root_path / p for p in args.select_folders]
-            elif not is_non_interactive:
+            elif not is_fully_automated:
+                checkbox_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:#FFA500'), ('selected', 'fg:#FFA500'), ('checkbox-selected', 'fg:#FFA500')])
                 folder_choices = file_handler.get_folder_choices(root_path, max_depth=scan_depth)
                 selected_options = questionary.checkbox("-- Select folders/sub-folders to extract:", choices=folder_choices, style=checkbox_style, instruction="(Arrows to move, Space to select, A to toggle, I to invert)").ask()
                 if selected_options is None: raise KeyboardInterrupt
@@ -140,9 +141,10 @@ def main():
                 if not any(path.is_relative_to(parent) for parent in final_paths): final_paths.add(path)
             folders_to_process.update(final_paths)
 
-        if not is_non_interactive: print()
+        if not is_fully_automated: print()
         total_files_extracted = 0
 
+        # --- Processing ---
         for folder_path in sorted(list(folders_to_process)):
             with Halo(text=f"Extracting {folder_path.relative_to(root_path)}...", spinner="dots"):
                 time.sleep(0.1)
@@ -156,7 +158,7 @@ def main():
                 if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
                 total_files_extracted += folder_count
             else:
-                logging.warning(f"[!] No extractable files in: {folder_path.relative_to(root_path)}")
+                logging.warning(f"‼️ No extractable files in: {folder_path.relative_to(root_path)}")
             logging.info("")
 
         if process_root_files:
@@ -173,9 +175,10 @@ def main():
                 logging.info(f"✅ Extracted {root_count} file(s) from the root directory")
                 if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
             else:
-                logging.warning("[!] No extractable files in the root directory")
+                logging.warning("‼️ No extractable files in the root directory")
             logging.info("")
         
+        # --- Final Summary ---
         if total_files_extracted > 0:
             output_dir_path = Path(output_dir_name).resolve()
             logging.info(colored(f"Success! A total of {total_files_extracted} file(s) have been extracted.", "grey", "on_green"))
@@ -186,11 +189,10 @@ def main():
         
         ui.print_footer()
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, TypeError):
         print(exit_message)
         sys.exit(0)
     except Exception as e:
-        # This will now print the actual error instead of just aborting
         logging.error(colored(f"\n[!] An unexpected error occurred: {e}", "red"))
         import traceback
         traceback.print_exc()
