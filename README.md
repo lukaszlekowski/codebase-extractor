@@ -55,12 +55,12 @@ The tool is highly configurable, allowing you to select specific folders, exclud
 ## ✨ Key Features
 
 - **Interactive & User-Friendly:** A guided, multi-step CLI experience that makes selecting options simple and clear.
+- **Quick Start by Default:** The tool starts without delay. Detailed instructions are available via an `--instructions` flag when you need a reminder.
 - **Smart Filtering:** Automatically excludes common dependency folders, build artifacts, version control directories, and IDE configuration files. The exact filters are configurable.
 - **Flexible Selection Modes:** Choose to extract the entire project with one command, or dive into a specific selection mode.
-- **🌳 Nested Folder Selection:** Interactively browse and select specific sub-folders from a tree-like view.
+- **🌳 Visual Tree Selection:** Interactively browse and select specific sub-folders from a clear, pipe-based tree structure.
 - **🔢 Configurable Scan Depth:** You decide how many levels deep the script should look for folders when building the selection tree.
-- **YAML Metadata:** Each generated Markdown file is prepended with a YAML front matter block containing useful metadata like a unique run ID, timestamp, and file count for easy tracking and parsing.
-- **🚀 Quick Start Mode:** Use the `--no-instructions` flag to skip the detailed intro guide on subsequent runs.
+- **Rich YAML Metadata:** Each generated Markdown file is prepended with a YAML front matter block containing useful metadata like a unique run ID, timestamp, file count, character count, and word count.
 - **Safe & Robust:** Features graceful exit handling (`Ctrl+C`) and provides clear feedback during the extraction process.
 
 ---
@@ -148,12 +148,12 @@ Once installed, you can run the tool from any terminal window. Navigate to your 
 code-extractor
 ```
 
-The script will then guide you through the extraction process.
+The script will launch immediately and guide you through the extraction process.
 
-For repeat usage, you can skip the detailed introductory guide by using the `--no-instructions` or `-ni` flag:
+For a detailed guide on how the script works, you can use the `--instructions` flag:
 
 ```bash
-code-extractor --no-instructions
+code-extractor --instructions
 ```
 
 ### The Process
@@ -173,25 +173,25 @@ The tool will guide you through a series of prompts:
 
 ### Output Details
 
-All output files are saved in a `CODEBASE_EXTRACTS` directory within your project folder. Each generated Markdown file includes a YAML metadata header with a unique reference ID, timestamp, and file count for easy tracking and parsing.
+All output files are saved in a `CODEBASE_EXTRACTS` directory within your project folder. Each generated Markdown file includes a YAML metadata header with a unique reference ID, timestamp, file count, character count, and word count for easy tracking and parsing.
 
 ### ⚡ CLI Command Reference
 
 For non-interactive use and automation, you can control the script entirely with these arguments.
 
-| Argument                   | Description                                                                  | Default Value               |
-| :------------------------- | :--------------------------------------------------------------------------- | :-------------------------- |
-| `-ni`, `--no-instructions` | Run the script without printing the detailed instruction banner.             | `False`                     |
-| `--root <path>`            | The root directory of the project to extract.                                | The current directory       |
-| `--output-dir <name>`      | Custom name for the output directory.                                        | `CODEBASE_EXTRACTS`         |
-| `--dry-run`                | Simulate the extraction process without writing any files.                   | `False`                     |
-| `-v`, `--verbose`          | Enable verbose logging for debugging.                                        | `False`                     |
-| `--log-file <path>`        | Path to save the log file.                                                   | `None`                      |
-| `--exclude-large-files`    | Non-interactive: Exclude files larger than 1MB.                              | `False`                     |
-| `--mode <mode>`            | Non-interactive: Set the extraction mode. Choices: `everything`, `specific`. | `None` (Interactive prompt) |
-| `--depth <number>`         | Non-interactive: Set the folder scan depth for 'specific' mode.              | `3`                         |
-| `--select-folders <list>`  | Non-interactive: A space-separated list of folders/sub-folders to extract.   | `[]`                        |
-| `--select-root`            | Non-interactive: Include files from the root directory in the extraction.    | `False`                     |
+| Argument                  | Description                                                                  | Default Value               |
+| :------------------------ | :--------------------------------------------------------------------------- | :-------------------------- |
+| `--instructions`          | Show the detailed instruction guide on startup.                              | `False`                     |
+| `--root <path>`           | The root directory of the project to extract.                                | The current directory       |
+| `--output-dir <name>`     | Custom name for the output directory.                                        | `CODEBASE_EXTRACTS`         |
+| `--dry-run`               | Simulate the extraction process without writing any files.                   | `False`                     |
+| `-v`, `--verbose`         | Enable verbose logging for debugging.                                        | `False`                     |
+| `--log-file <path>`       | Path to save the log file.                                                   | `None`                      |
+| `--exclude-large-files`   | Non-interactive: Exclude files larger than 1MB.                              | `False`                     |
+| `--mode <mode>`           | Non-interactive: Set the extraction mode. Choices: `everything`, `specific`. | `None` (Interactive prompt) |
+| `--depth <number>`        | Non-interactive: Set the folder scan depth for 'specific' mode.              | `3`                         |
+| `--select-folders <list>` | Non-interactive: A space-separated list of folders/sub-folders to extract.   | `[]`                        |
+| `--select-root`           | Non-interactive: Include files from the root directory in the extraction.    | `False`                     |
 
 ---
 
@@ -204,7 +204,7 @@ Here are a few practical examples of how to use the tool from your command line.
   A common command for quick, automated runs.
 
   ```bash
-  code-extractor --no-instructions --mode everything
+  code-extractor --mode everything
   ```
 
 - #### Extract specific sub-folders non-interactively
@@ -212,7 +212,7 @@ Here are a few practical examples of how to use the tool from your command line.
   This command extracts only the `src/components` and `src/hooks` directories, plus any files in the root.
 
   ```bash
-  code-extractor --ni --mode specific --select-folders src/components src/hooks --select-root
+  code-extractor --mode specific --select-folders src/components src/hooks --select-root
   ```
 
 - #### Perform a safe dry run

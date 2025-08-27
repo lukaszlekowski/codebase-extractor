@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-08-27
+
+### Added
+
+- **Content Metrics in Output**: The YAML header and final console summary now include character and word counts for each generated file.
+
+### Changed
+
+- **UI & UX Enhancements**:
+  - Inverted startup logic; detailed instructions are now opt-in via `--instructions`.
+  - Removed the "Press Enter to begin..." pause for a faster startup.
+  - Replaced the folder selection list with a clearer, pipe-based visual tree.
+  - Updated the compact ASCII art logo for better readability on small terminals.
+
 ## [1.1.0] - 2025-07-16
 
 ### Features
