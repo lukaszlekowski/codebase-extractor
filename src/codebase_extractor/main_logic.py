@@ -148,13 +148,23 @@ def main():
         for folder_path in sorted(list(folders_to_process)):
             with Halo(text=f"Extracting {folder_path.relative_to(root_path)}...", spinner="dots"):
                 time.sleep(0.1)
-                folder_md, folder_count = file_handler.extract_code_from_folder(folder_path, exclude_large)
+                # CHANGED: Unpack the new char_count and word_count values
+                folder_md, folder_count, char_count, word_count = file_handler.extract_code_from_folder(folder_path, exclude_large)
             
             if folder_count > 0:
-                metadata = {"run_ref": run_ref, "run_timestamp": run_timestamp, "folder_name": str(folder_path.relative_to(root_path)), "file_count": folder_count}
+                # CHANGED: Add new metrics to the metadata dictionary
+                metadata = {
+                    "run_ref": run_ref, 
+                    "run_timestamp": run_timestamp, 
+                    "folder_name": str(folder_path.relative_to(root_path)), 
+                    "file_count": folder_count,
+                    "char_count": char_count,
+                    "word_count": word_count
+                }
                 if not args.dry_run:
                     file_handler.write_to_markdown_file(folder_md, metadata, root_path, output_dir_name)
                 logging.info(f"✅ Extracted {folder_count} file(s) from: {folder_path.relative_to(root_path)}")
+                logging.info(f"📜 {char_count:,} character(s), {word_count:,} word(s)")
                 if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
                 total_files_extracted += folder_count
             else:
@@ -165,14 +175,24 @@ def main():
             root_display_name = f"root [{root_path.name}] (files in root folder only, excl. sub-folders)"
             with Halo(text=f"Extracting {root_display_name}...", spinner="dots"):
                 time.sleep(0.1)
-                root_md, root_count = file_handler.extract_code_from_root(root_path, exclude_large)
+                # CHANGED: Unpack the new char_count and word_count values
+                root_md, root_count, char_count, word_count = file_handler.extract_code_from_root(root_path, exclude_large)
             
             if root_count > 0:
-                metadata = {"run_ref": run_ref, "run_timestamp": run_timestamp, "folder_name": root_display_name, "file_count": root_count}
+                # CHANGED: Add new metrics to the metadata dictionary
+                metadata = {
+                    "run_ref": run_ref, 
+                    "run_timestamp": run_timestamp, 
+                    "folder_name": root_display_name, 
+                    "file_count": root_count,
+                    "char_count": char_count,
+                    "word_count": word_count
+                }
                 if not args.dry_run:
                     file_handler.write_to_markdown_file(root_md, metadata, root_path, output_dir_name)
                 total_files_extracted += root_count
                 logging.info(f"✅ Extracted {root_count} file(s) from the root directory")
+                logging.info(f"📜 {char_count:,} character(s), {word_count:,} word(s)")
                 if args.dry_run: logging.info(colored(" (Dry Run: No file written)", "yellow"))
             else:
                 logging.warning("‼️ No extractable files in the root directory")

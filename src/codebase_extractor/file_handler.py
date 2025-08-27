@@ -73,8 +73,13 @@ def is_allowed_file(path: Path, exclude_large: bool) -> bool:
     return True
 
 
-def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int):
-    """Extracts code from a given folder, respecting EXCLUDED_DIRS at all depths."""
+def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int, int, int):
+    """
+    Extracts code from a given folder, respecting EXCLUDED_DIRS at all depths.
+    
+    Returns:
+        A tuple containing the content string, file count, char count, and word count.
+    """
     content = f"# Folder: {folder.relative_to(Path.cwd())}\n\n"
     extracted_files = 0
     dirs_to_visit = [folder]
@@ -97,11 +102,21 @@ def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int):
                     content += f"\n\n"
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
         logging.warning(colored(f"> Caution: Large file count in '{folder.name}' ({extracted_files} files).", "yellow"))
-    return content, extracted_files
+    
+    # ADDED: Calculate character and word counts
+    char_count = len(content)
+    word_count = len(content.split())
+    
+    return content, extracted_files, char_count, word_count
 
 
-def extract_code_from_root(root_path: Path, exclude_large: bool) -> (str, int):
-    """Extracts code only from files present in the root directory."""
+def extract_code_from_root(root_path: Path, exclude_large: bool) -> (str, int, int, int):
+    """
+    Extracts code only from files present in the root directory.
+    
+    Returns:
+        A tuple containing the content string, file count, char count, and word count.
+    """
     content = f"# Root Files: {root_path.name}\n\n"
     extracted_files = 0
     for filepath in sorted(root_path.iterdir()):
@@ -114,7 +129,12 @@ def extract_code_from_root(root_path: Path, exclude_large: bool) -> (str, int):
             extracted_files += 1
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
         logging.warning(colored(f"> Caution: Large file count in root ({extracted_files} files).", "yellow"))
-    return content, extracted_files
+    
+    # ADDED: Calculate character and word counts
+    char_count = len(content)
+    word_count = len(content.split())
+
+    return content, extracted_files, char_count, word_count
 
 
 def write_to_markdown_file(content: str, metadata: dict, root_path: Path, output_dir_name: str):
@@ -133,12 +153,15 @@ def write_to_markdown_file(content: str, metadata: dict, root_path: Path, output
     filename = f"{file_base_name}_{timestamp}.md"
     full_filepath = output_dir / filename
 
+    # CHANGED: Added char_count and word_count to the YAML header
     yaml_header = f"""---
 extraction_details:
   reference: {metadata['run_ref']}
   timestamp_utc: "{metadata['run_timestamp']}"
   source_folder: "{metadata['folder_name']}"
   file_count: {metadata['file_count']}
+  char_count: {metadata['char_count']}
+  word_count: {metadata['word_count']}
 tool_details:
   name: "Codebase Extractor"
   version: "{__version__}"
