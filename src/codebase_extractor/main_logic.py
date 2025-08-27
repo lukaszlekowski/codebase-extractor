@@ -79,14 +79,14 @@ def main():
         # --- Startup Sequence ---
         if not is_fully_automated:
             ui.clear_screen()
-            ui.print_banner(no_instructions=args.no_instructions)
-            if not args.no_instructions:
+            # CHANGED: Pass the new 'instructions' flag to the banner function
+            ui.print_banner(show_instructions=args.instructions)
+            # CHANGED: Logic is now inverted to show instructions only when the flag is present
+            if args.instructions:
                 ui.show_instructions(output_dir_name)
-            else:
-                input(colored("\nPress Enter to begin...", "green"))
-                ui.clear_screen()
         else:
-            ui.print_banner(no_instructions=True)
+            # NOTE: For automated runs, the banner is always minimal. This is correct.
+            ui.print_banner(show_instructions=False)
         
         # --- Collect Settings (Interactively or from Args) ---
         select_style = Style([('qmark', 'fg:#FFA500'), ('pointer', 'fg:#FFA500'), ('highlighted', 'fg:black bg:#FFA500'), ('selected', 'fg:black bg:#FFA500')])

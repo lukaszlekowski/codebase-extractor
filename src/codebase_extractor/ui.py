@@ -16,26 +16,16 @@ LOGO_LARGE = """
 """
 
 LOGO_SMALL = """
- ██████╗ ██████╗ ██████╗ ███████╗██████╗  █████╗ ███████╗███████╗          
-██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔════╝          
-██║     ██║   ██║██║  ██║█████╗  ██████╔╝███████║███████╗█████╗            
-██║     ██║   ██║██║  ██║██╔══╝  ██╔══██╗██╔══██║╚════██║██╔══╝            
-╚██████╗╚██████╔╝██████╔╝███████╗██████╔╝██║  ██║███████║███████╗          
- ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝          
-                                                                           
-███████╗██╗  ██╗████████╗██████╗  █████╗  ██████╗████████╗ ██████╗ ██████╗ 
-██╔════╝╚██╗██╔╝╚══██╔══╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗
-█████╗   ╚███╔╝    ██║   ██████╔╝███████║██║        ██║   ██║   ██║██████╔╝
-██╔══╝   ██╔██╗    ██║   ██╔══██╗██╔══██║██║        ██║   ██║   ██║██╔══██╗
-███████╗██╔╝ ██╗   ██║   ██║  ██║██║  ██║╚██████╗   ██║   ╚██████╔╝██║  ██║
-╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝
+  ░█▀▀░█▀█░█▀▄░█▀▀░█▀▄░█▀█░█▀▀░█▀▀░░░█▀▀░█░█░▀█▀░█▀▄░█▀█░█▀▀░▀█▀░█▀█░█▀▄
+  ░█░░░█░█░█░█░█▀▀░█▀▄░█▀█░▀▀█░█▀▀░░░█▀▀░▄▀▄░░█░░█▀▄░█▀█░█░░░░█░░█░█░█▀▄
+  ░▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀░░▀░▀░▀▀▀░▀▀▀░░░▀▀▀░▀░▀░░▀░░▀░▀░▀░▀░▀▀▀░░▀░░▀▀▀░▀░▀
 """
 
 def clear_screen():
     """Clears the terminal screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_banner(no_instructions: bool = False):
+def print_banner(show_instructions: bool = False): # CHANGED: Parameter name for clarity
     """Prints a banner that adjusts to the terminal width."""
     try:
         width = shutil.get_terminal_size((80, 20)).columns
@@ -49,10 +39,9 @@ def print_banner(no_instructions: bool = False):
 
     # Use the imported __version__ variable instead of config.SCRIPT_VERSION
     print(colored(f" Welcome to Code Extractor v{__version__} by Lukasz Lekowski ".center(width, "="), "white", "on_magenta"))
-    
-    if not no_instructions:
-        print("\nThis tool consolidates your project's code into structured Markdown files.")
-        print("It's ideal for providing context to AI models, archiving projects, or generating documentation.")
+    print("\nThis tool consolidates your project's code into structured Markdown files.")
+    print("It's ideal for providing context to AI models, archiving projects, or generating documentation.\n")
+
 
 def show_instructions(output_dir_name: str):
     """Clears screen and shows detailed instructions, pausing for user input."""
@@ -85,7 +74,8 @@ def show_instructions(output_dir_name: str):
     print(colored("--- Output Details ---", "yellow"))
     print(f"All extracted content is saved into the '{output_dir_name}' directory. Each Markdown file generated will contain a YAML metadata header at the top with a unique reference ID, a timestamp, and more.\n")
     
-    tip = "TIP: Run this script with the --no-instructions or -ni flag to skip this guide."
+    # CHANGED: Updated the tip to reflect the new '--instructions' flag
+    tip = "TIP: To see this guide again, run the script with the --instructions flag."
     print(colored(tip, "black", "on_yellow"))
 
     input(colored("\nReady? Press Enter to begin...", "green"))
@@ -106,5 +96,3 @@ def print_footer():
     print(config.GITHUB_URL + "\n")
     print("🤝 Connect with the author on LinkedIn:")
     print(config.LINKEDIN_URL + "\n")
-    print("☕ Enjoying this tool? You can support its development with a coffee!")
-    print("https://www.buymeacoffee.com/lukaszlekowski\n")

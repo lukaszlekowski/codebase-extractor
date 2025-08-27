@@ -10,9 +10,10 @@ def parse_arguments():
     
     # General Flags
     parser.add_argument(
-        '-ni', '--no-instructions',
+        '--instructions',
         action='store_true',
-        help="Run the script without printing the detailed instruction banner."
+        default=False,  # ADDED: This ensures the attribute always exists.
+        help="Show the detailed instruction guide on startup."
     )
     parser.add_argument(
         '--root',

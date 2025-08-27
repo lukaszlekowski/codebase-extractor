@@ -10,29 +10,46 @@ import questionary
 
 
 def get_folder_choices(root_path: Path, max_depth: int) -> list:
-    """Recursively finds folders up to a max depth and prepares them for questionary."""
+    """Recursively finds folders up to a max depth and prepares them for questionary with a visual tree."""
     choices = []
-    
-    def scanner(current_path: Path, depth: int):
+
+    def scanner(current_path: Path, prefix: str, depth: int):
+        """A recursive helper to build the folder tree."""
+        # Stop scanning if the maximum depth is reached
         if depth > max_depth:
             return
             
-        relative_path = current_path.relative_to(root_path)
-        prefix = "  " * (depth - 1)
-        display_name = f"{prefix}{current_path.name}"
-        choices.append(questionary.Choice(title=display_name, value=relative_path))
-        
         try:
-            subdirs = sorted([p for p in current_path.iterdir() if p.is_dir() and p.name not in config.EXCLUDED_DIRS])
-            for subdir in subdirs:
-                scanner(subdir, depth + 1)
+            # Get a sorted list of valid subdirectories
+            subdirs = sorted([
+                p for p in current_path.iterdir()
+                if p.is_dir() and p.name not in config.EXCLUDED_DIRS
+            ])
+            
+            # Iterate through the subdirectories to build the tree display
+            for i, subdir in enumerate(subdirs):
+                is_last = (i == len(subdirs) - 1)
+                
+                # Use '└─' for the last item and '├─' for others
+                connector = "└─ " if is_last else "├─ "
+                display_name = f"{prefix}{connector}{subdir.name}"
+                
+                relative_path = subdir.relative_to(root_path)
+                choices.append(questionary.Choice(title=display_name, value=relative_path))
+                
+                # Prepare the prefix for the next level of recursion
+                # Use a blank prefix for children of the last item, and a pipe for others
+                child_prefix = prefix + ("    " if is_last else "│   ")
+                scanner(subdir, child_prefix, depth + 1)
+
         except PermissionError:
+            # Silently ignore directories that the user doesn't have permission to read
             pass
 
-    top_level_folders = sorted([p for p in root_path.iterdir() if p.is_dir() and p.name not in config.EXCLUDED_DIRS])
-    for folder in top_level_folders:
-        scanner(folder, 1)
+    # Start the recursive scan from the project's root directory
+    scanner(root_path, prefix="", depth=1)
         
+    # Add the special option to select files in the root folder itself
     root_option_name = f"root [{root_path.name}] (files in root folder only, excl. sub-folders)"
     choices.insert(0, questionary.Choice(title=root_option_name, value="ROOT_SENTINEL"))
     
