@@ -35,6 +35,34 @@ class NumberValidator(Validator):
                 message="Please enter a valid number.",
                 cursor_position=len(document.text))
 
+def _launch_tui_placeholder():
+    """Placeholder TUI entrypoint for Phase 0. Will be replaced with actual Textual UI in later phases."""
+    ui.clear_screen()
+    ui.print_banner(show_instructions=False)
+
+    message = """
+╔═══════════════════════════════════════════════════════════╗
+║                    TEXTUAL TUI                            ║
+║                     (PHASE 0)                             ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                             ║
+║  The Textual TUI interface is not yet implemented.          ║
+║  This is a placeholder for Phase 0 routing and scaffolding.║
+║                                                             ║
+║  Coming in later phases:                                    ║
+║  - Tabbed interface (Settings / Extensions / Tree)          ║
+║  - Interactive folder/file selection                        ║
+║  - Progress bar during extraction                           ║
+║                                                             ║
+║  For now, please use the wizard mode (default) or           ║
+║  non-interactive mode (--mode).                             ║
+║                                                             ║
+╚═══════════════════════════════════════════════════════════╝
+"""
+    logging.info(message)
+    logging.info(colored("Exiting gracefully...", "yellow"))
+
+
 def setup_logging(verbose: bool, log_file: Optional[str] = None):
     """Configures the logging system."""
     log_level = logging.DEBUG if verbose else logging.INFO
@@ -66,6 +94,13 @@ def main():
         args = cli.parse_arguments()
         setup_logging(args.verbose, args.log_file)
 
+        # --- UI Mode Routing ---
+        # Priority: 1) Non-interactive mode (--mode)  2) TUI mode (--tui)  3) Default wizard
+        is_fully_automated = args.mode is not None
+        if not is_fully_automated and args.tui:
+            _launch_tui_placeholder()
+            return
+
         output_dir_name = args.output_dir if args.output_dir else config.OUTPUT_DIR_NAME
         config.EXCLUDED_DIRS.add(output_dir_name)
 
@@ -73,8 +108,7 @@ def main():
         if not root_path.is_dir():
             logging.error(colored(f"Error: The provided root path is not a valid directory: {root_path}", "red"))
             return
-        
-        is_fully_automated = args.mode is not None
+
 
         # --- Startup Sequence ---
         if not is_fully_automated:

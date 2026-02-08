@@ -74,4 +74,11 @@ def parse_arguments():
         help="Non-interactive: Include files from the root directory in the extraction."
     )
 
+    # TUI Mode flag
+    parser.add_argument(
+        '--tui',
+        action='store_true',
+        help="Launch the Textual TUI interface (placeholder for Phase 0)."
+    )
+
     return parser.parse_args()
