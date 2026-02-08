@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/codebase-extractor/"><img src="https://badge.fury.io/py/codebase-extractor.svg" alt="PyPI version"></a>
-  <img src="https://img.shields.io/badge/python-3.9%2B-blue.svg" alt="Python Version">
+  <img src="https://img.shields.io/badge/python-3.14%2B-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/License-MIT%20(Modified)-yellow.svg" alt="License: MIT (Modified)">
 </p>
 
@@ -84,7 +84,7 @@ This guide will walk you through installing the Codebase Extractor.
 
 ### Step 1: Ensure Python is Installed
 
-Make sure you have Python 3.9 or newer installed. You can check your version by opening your terminal and running:
+Make sure you have Python 3.14 or newer installed. You can check your version by opening your terminal and running:
 
 ```bash
 python3 --version
