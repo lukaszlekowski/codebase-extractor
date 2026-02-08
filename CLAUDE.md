@@ -16,8 +16,8 @@ The tool supports:
 
 We use an RPI-style workflow:
 
-- Research outputs live in `docs/research/` (date-stamped). (Create if missing.)
-- Plans live in `docs/plan/` (date-stamped). (Create if missing.)
+- Research outputs live in `docs/1_research/` (date-stamped). (Create if missing.)
+- Plans live in `docs/2_plans/` (date-stamped). (Create if missing.)
 - Keep research factual; keep plans phase-based and checkable.
 
 ## Workflow requirements (non-negotiable)
