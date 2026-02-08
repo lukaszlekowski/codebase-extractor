@@ -13,7 +13,6 @@
 <p align="center">
   💡 <b>Love this tool?</b> Found a bug or have an idea? Share it on <a href="https://github.com/lukaszlekowski/codebase-extractor">GitHub</a>! <br>
   🤝 <b>Connect with me</b> on <a href="https://www.linkedin.com/in/lukasz-lekowski">LinkedIn</a>. <br>
-  ☕ <b>Enjoying it?</b> Support development with a <a href="https://www.buymeacoffee.com/lukaszlekowski">coffee</a>!
 </p>
 
 ---
