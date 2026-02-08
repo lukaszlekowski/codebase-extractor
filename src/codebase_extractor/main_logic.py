@@ -35,7 +35,7 @@ class NumberValidator(Validator):
                 message="Please enter a valid number.",
                 cursor_position=len(document.text))
 
-def setup_logging(verbose: bool, log_file: str = None):
+def setup_logging(verbose: bool, log_file: Optional[str] = None):
     """Configures the logging system."""
     log_level = logging.DEBUG if verbose else logging.INFO
     log_format = logging.Formatter('%(message)s')
@@ -94,7 +94,7 @@ def main():
         exclude_large = args.exclude_large_files
         if not is_fully_automated:
             logging.info("=== Extraction Settings ===")
-            exclude_large_choice = questionary.select("[1/2] -- Exclude files larger than 1MB?", choices=["yes", "no"], style=select_style, instruction=" ").ask()
+            exclude_large_choice = questionary.select("[1/2] -- Exclude files larger than 1MB?", choices=["no", "yes"], style=select_style, instruction=" ").ask()
             if exclude_large_choice is None: raise KeyboardInterrupt
             exclude_large = exclude_large_choice == "yes"
             print()
@@ -217,3 +217,6 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()

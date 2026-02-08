@@ -145,7 +145,7 @@ pipx install codebase-extractor
 Once installed, you can run the tool from any terminal window. Navigate to your project's root directory and run the command:
 
 ```bash
-code-extractor
+codebase-extractor
 ```
 
 The script will launch immediately and guide you through the extraction process.
@@ -153,7 +153,7 @@ The script will launch immediately and guide you through the extraction process.
 For a detailed guide on how the script works, you can use the `--instructions` flag:
 
 ```bash
-code-extractor --instructions
+codebase-extractor --instructions
 ```
 
 ### The Process
@@ -204,7 +204,7 @@ Here are a few practical examples of how to use the tool from your command line.
   A common command for quick, automated runs.
 
   ```bash
-  code-extractor --mode everything
+  codebase-extractor --mode everything
   ```
 
 - #### Extract specific sub-folders non-interactively
@@ -212,7 +212,7 @@ Here are a few practical examples of how to use the tool from your command line.
   This command extracts only the `src/components` and `src/hooks` directories, plus any files in the root.
 
   ```bash
-  code-extractor --mode specific --select-folders src/components src/hooks --select-root
+  codebase-extractor --mode specific --select-folders src/components src/hooks --select-root
   ```
 
 - #### Perform a safe dry run
@@ -220,13 +220,13 @@ Here are a few practical examples of how to use the tool from your command line.
   This will simulate a full extraction and print what it _would_ have done, without creating any files.
 
   ```bash
-  code-extractor --dry-run --mode everything
+  codebase-extractor --dry-run --mode everything
   ```
 
 - #### Run on a different project and save to a custom folder
   This targets a completely different directory and specifies a custom output folder name.
   ```bash
-  code-extractor --root /path/to/another/project --output-dir MyProject_Extraction
+  codebase-extractor --root /path/to/another/project --output-dir MyProject_Extraction
   ```
 
 ---
@@ -236,10 +236,11 @@ Here are a few practical examples of how to use the tool from your command line.
 The tool uses a set of rules to determine which files and folders to include in the extraction. Here are the default settings found in the `config.py` file.
 
 <details>
-  <summary><strong>Click to view Excluded Directories</strong></summary>
+<summary><strong>Click to view Excluded Directories</strong></summary>
   
   - `node_modules`, `vendor`, `__pycache__`, `dist`, `build`, `target`, `.next`
   - `.git`, `.svn`, `.hg`, `.vscode`, `.idea`, `venv`, `.venv`
+  - `.dart_tool`, `.gradle`, `Pods`, `DerivedData`
   
 </details>
 
@@ -253,17 +254,20 @@ The tool uses a set of rules to determine which files and folders to include in 
 <details>
   <summary><strong>Click to view Allowed Filenames & Extensions</strong></summary>
   
-  The script will process any file with one of the following extensions. It also explicitly allows common configuration files that may not have an extension.
+The script will process any file with one of the following extensions. It also explicitly allows common configuration files that may not have an extension.
   
   **Allowed Filenames:**
-  - `dockerfile`, `.gitignore`, `.htaccess`, `makefile`
+  - `dockerfile`, `.gitignore`, `.htaccess`, `makefile`, `.dockerignore`, `.env.example`
+  - `podfile`, `gemfile`, `jenkinsfile`, `gradlew`
   
   **Allowed Extensions:**
-  - `.php`, `.html`, `.css`, `.js`, `.jsx`, `.ts`, `.tsx`, `.vue`, `.svelte`
-  - `.py`, `.rb`, `.java`, `.c`, `.cpp`, `.cs`, `.go`, `.rs`
-  - `.json`, `.xml`, `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`
-  - `.md`, `.txt`, `.rst`, `.twig`, `.blade`, `.handlebars`, `.mustache`, `.ejs`
-  - `.sql`, `.graphql`, `.gql`, `.tf`
+  - **Web & General:** `.php`, `.html`, `.css`, `.js`, `.jsx`, `.ts`, `.tsx`, `.vue`, `.svelte`
+  - **Backend & Systems:** `.py`, `.rb`, `.java`, `.c`, `.cpp`, `.cs`, `.go`, `.rs`
+  - **Config & Data:** `.json`, `.xml`, `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`
+  - **Docs & Templates:** `.md`, `.txt`, `.rst`, `.twig`, `.blade`, `.handlebars`, `.mustache`, `.ejs`
+  - **Database & IaC:** `.sql`, `.graphql`, `.gql`, `.tf`
+  - **Mobile (Flutter, Android, iOS):** `.dart`, `.arb`, `.gradle`, `.properties`, `.plist`, `.xcconfig`
+  - **Scripts:** `.sh`, `.bat`
   
 </details>
 
@@ -271,7 +275,7 @@ The tool uses a set of rules to determine which files and folders to include in 
 
 ## 🤔 Troubleshooting
 
-- **Problem:** After installation, I run `code-extractor` and my terminal says `command not found`.
+- **Problem:** After installation, I run `codebase-extractor` and my terminal says `command not found`.
 - **Solution:** This is usually a `PATH` issue. It means your system's shell doesn't know where to find the installed script. The `pip install --user` command sometimes requires you to add a local scripts directory to your `PATH`. Please refer to your operating system's documentation for instructions on how to modify your `PATH` environment variable.
 
 - **Problem:** The tool ran, but a specific folder or file I expected to see is missing from the output.

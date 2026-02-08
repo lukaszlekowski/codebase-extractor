@@ -66,14 +66,14 @@ def is_allowed_file(path: Path, exclude_large: bool) -> bool:
         return False
     if path.name.lower() in config.EXCLUDED_FILENAMES:
         return False
-    if path.suffix not in config.ALLOWED_EXTENSIONS:
+    if path.suffix.lower() not in config.ALLOWED_EXTENSIONS:
         return False
     if exclude_large and path.stat().st_size > config.MAX_FILE_SIZE_MB * 1024 * 1024:
         return False
     return True
 
 
-def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int, int, int):
+def extract_code_from_folder(folder: Path, exclude_large: bool) -> tuple[str, int, int, int]:
     """
     Extracts code from a given folder, respecting EXCLUDED_DIRS at all depths.
     
@@ -110,7 +110,7 @@ def extract_code_from_folder(folder: Path, exclude_large: bool) -> (str, int, in
     return content, extracted_files, char_count, word_count
 
 
-def extract_code_from_root(root_path: Path, exclude_large: bool) -> (str, int, int, int):
+def extract_code_from_root(root_path: Path, exclude_large: bool) -> tuple[str, int, int, int]:
     """
     Extracts code only from files present in the root directory.
     

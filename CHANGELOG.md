@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-08
+
+### Added
+
+- **Flutter & Mobile Support**: Explicitly added `.dart`, `.arb`, `.gradle`, `.plist`, and `.xcconfig` to the allowed extensions list.
+- **Configurable Exclusions**: Added `.dart_tool`, `Pods`, and `DerivedData` to the default exclusion list to prevent noise in Flutter/iOS projects.
+- **Command Alias**: Renamed the entry point from `code-extractor` to `codebase-extractor` (though `code-extractor` may be kept for backward compatibility if desired, we switched it in `pyproject.toml`).
+
+### Fixed
+
+- **Type Hinting**: Resolved Pylance strict type checking errors in `file_handler.py` (tuple return types) and `main_logic.py` (Optional types).
+- **Default Behavior**: Changed the "Exclude large files" default prompt to "No" for smoother interaction.
+- **Case Sensitivity**: File extension checks are now case-insensitive (e.g., `README.MD` is now accepted).
+
 ## [1.1.1] - 2025-08-27
 
 ### Added

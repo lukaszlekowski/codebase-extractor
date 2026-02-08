@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codebase-extractor"
-version = "1.1.1"
+version = "1.2.0"
 authors = [
   { name="Lukasz Lekowski" },
 ]
 description = "A CLI tool to extract project source code into structured Markdown files for LLM & AI context."
 readme = "README.md"
 license = { file="LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -27,7 +27,7 @@ dependencies = [
 
 # This creates the `code-extractor` command in the user's terminal
 [project.scripts]
-code-extractor = "codebase_extractor.main_logic:main"
+codebase-extractor = "codebase_extractor.main_logic:main"
 
 [project.urls]
 "Homepage" = "https://github.com/lukaszlekowski/codebase-extractor"
