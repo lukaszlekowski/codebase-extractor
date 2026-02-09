@@ -20,6 +20,7 @@ from . import config
 from . import ui
 from . import file_handler
 from . import cli
+from . import tui
 
 class NumberValidator(Validator):
     """Validates that the input is a positive integer."""
@@ -34,33 +35,6 @@ class NumberValidator(Validator):
             raise ValidationError(
                 message="Please enter a valid number.",
                 cursor_position=len(document.text))
-
-def _launch_tui_placeholder():
-    """Placeholder TUI entrypoint for Phase 0. Will be replaced with actual Textual UI in later phases."""
-    ui.clear_screen()
-    ui.print_banner(show_instructions=False)
-
-    message = """
-╔═══════════════════════════════════════════════════════════╗
-║                    TEXTUAL TUI                            ║
-║                     (PHASE 0)                             ║
-╠═══════════════════════════════════════════════════════════╣
-║                                                             ║
-║  The Textual TUI interface is not yet implemented.          ║
-║  This is a placeholder for Phase 0 routing and scaffolding.║
-║                                                             ║
-║  Coming in later phases:                                    ║
-║  - Tabbed interface (Settings / Extensions / Tree)          ║
-║  - Interactive folder/file selection                        ║
-║  - Progress bar during extraction                           ║
-║                                                             ║
-║  For now, please use the wizard mode (default) or           ║
-║  non-interactive mode (--mode).                             ║
-║                                                             ║
-╚═══════════════════════════════════════════════════════════╝
-"""
-    logging.info(message)
-    logging.info(colored("Exiting gracefully...", "yellow"))
 
 
 def setup_logging(verbose: bool, log_file: Optional[str] = None):
@@ -98,7 +72,7 @@ def main():
         # Priority: 1) Non-interactive mode (--mode)  2) TUI mode (--tui)  3) Default wizard
         is_fully_automated = args.mode is not None
         if not is_fully_automated and args.tui:
-            _launch_tui_placeholder()
+            tui.launch_tui()
             return
 
         output_dir_name = args.output_dir if args.output_dir else config.OUTPUT_DIR_NAME

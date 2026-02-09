@@ -23,6 +23,7 @@ dependencies = [
     "questionary",
     "halo",
     "termcolor",
+    "textual",
 ]
 
 # This creates the `code-extractor` command in the user's terminal
