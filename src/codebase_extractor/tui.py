@@ -12,7 +12,7 @@ from typing import Set
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, Container
+from textual.containers import Horizontal, Vertical, VerticalScroll, Container, Center
 from textual.widgets import (
     Header, Footer, TabbedContent, TabPane, Static,
     Switch, Input, Label, Button, RadioSet, RadioButton, SelectionList
@@ -34,12 +34,25 @@ class ExtractionSession:
     include_root_files: bool = False
 
     # Excluded directories (user-configurable)
-    # Default to all standard exclusions being selected
+    # Default to all standard exclusions being selected (matching config.py)
     excluded_dirs: Set[str] = field(default_factory=lambda: set([
-        "node_modules", "vendor", "__pycache__", "dist", "build", ".git", "venv",
-        ".dart_tool", ".gradle", "Pods", "DerivedData",
-        ".next", "target", ".cache", "tsconfig.tsbuildinfo",
+        # Standard exclusions
+        "node_modules", "vendor", "__pycache__", "dist", "build", "target", ".next",
+        ".git", ".svn", ".hg", ".vscode", ".idea", "venv", ".venv", ".dart_tool",
+        # Flutter/Mobile exclusions
+        ".gradle", "Pods", "DerivedData",
     ]))
+
+    # Excluded filenames (lock files, config files)
+    excluded_filenames: Set[str] = field(default_factory=lambda: set([
+        "package-lock.json", "yarn.lock", "composer.lock", ".env", "Podfile.lock",
+    ]))
+
+    # Allowed extensions (for file filtering during extraction)
+    allowed_extensions: Set[str] = field(default_factory=lambda: set(config.ALLOWED_EXTENSIONS))
+
+    # Allowed filenames (specific files that are always allowed)
+    allowed_filenames: Set[str] = field(default_factory=lambda: set(config.ALLOWED_FILENAMES))
 
     def get_excluded_dirs(self) -> Set[str]:
         """Get excluded directories based on user configuration."""
@@ -111,8 +124,8 @@ class CodebaseExtractorApp(App):
         """Compose the UI."""
         yield Header()
         with TabbedContent(id="main_tabs"):
-            # Settings Tab - Two-column layout
-            yield TabPane("Settings", Vertical(
+            # Settings Tab
+            yield TabPane("Settings", VerticalScroll(
                 Label("Extraction Settings", id="settings_header"),
 
                 # Info section
@@ -179,7 +192,7 @@ class CodebaseExtractorApp(App):
             ), id="settings_tab")
 
             # Exclusions Tab with SelectionLists
-            yield TabPane("Exclusions", Vertical(
+            yield TabPane("Exclusions", VerticalScroll(
                 Label("Folder Exclusions", classes="header"),
                 Static(
                     "Select folders to exclude from extraction. "
@@ -189,16 +202,41 @@ class CodebaseExtractorApp(App):
                 ),
                 Static(),
                 # Standard exclusions
-                Label("Standard", classes="group-header"),
+                Label("Package Managers & Build Output", classes="group-header"),
                 SelectionList(
                     ("node_modules - JS/Node dependencies", "node_modules", True),
                     ("vendor - PHP/Composer dependencies", "vendor", True),
                     ("__pycache__ - Python bytecode cache", "__pycache__", True),
                     ("dist - Distribution/build output", "dist", True),
                     ("build - Build artifacts", "build", True),
+                    ("target - Rust/Cargo build output", "target", True),
+                    (".next - Next.js build cache", ".next", True),
+                    id="pkg_exclusions_list",
+                ),
+                Static(),
+                # Version Control
+                Label("Version Control", classes="group-header"),
+                SelectionList(
                     (".git - Git repository data", ".git", True),
-                    ("venv/.venv - Python virtual environments", "venv", True),
-                    id="std_exclusions_list",
+                    (".svn - Subversion repository data", ".svn", True),
+                    (".hg - Mercurial repository data", ".hg", True),
+                    id="vcs_exclusions_list",
+                ),
+                Static(),
+                # Virtual Environments
+                Label("Virtual Environments", classes="group-header"),
+                SelectionList(
+                    ("venv - Python virtual environment", "venv", True),
+                    (".venv - Python virtual environment", ".venv", True),
+                    id="venv_exclusions_list",
+                ),
+                Static(),
+                # IDE & Editor
+                Label("IDE & Editor", classes="group-header"),
+                SelectionList(
+                    (".vscode - VS Code settings", ".vscode", True),
+                    (".idea - JetBrains IDE settings", ".idea", True),
+                    id="ide_exclusions_list",
                 ),
                 Static(),
                 # Flutter/Mobile exclusions
@@ -211,26 +249,129 @@ class CodebaseExtractorApp(App):
                     id="flutter_exclusions_list",
                 ),
                 Static(),
-                # Build/Cache exclusions
-                Label("Build/Cache", classes="group-header"),
+                # Lock Files
+                Label("Lock Files", classes="group-header"),
                 SelectionList(
-                    (".next - Next.js build cache", ".next", True),
-                    ("target - Rust/Cargo build output", "target", True),
-                    (".cache - Generic cache directory", ".cache", True),
-                    ("tsconfig.tsbuildinfo - TypeScript incremental build", "tsconfig.tsbuildinfo", True),
-                    id="build_exclusions_list",
+                    ("package-lock.json - npm lock file", "package-lock.json", True),
+                    ("yarn.lock - Yarn lock file", "yarn.lock", True),
+                    ("composer.lock - PHP Composer lock file", "composer.lock", True),
+                    ("Podfile.lock - CocoaPods lock file", "Podfile.lock", True),
+                    id="lock_files_list",
+                ),
+                Static(),
+                # Config Files
+                Label("Config Files", classes="group-header"),
+                SelectionList(
+                    (".env - Environment variables", ".env", True),
+                    id="config_files_list",
                 ),
                 Static(),
                 Static(
-                    "Use Space to select/deselect folders.\n"
-                    "Selected folders will be excluded from extraction.",
+                    "Use Space to select/deselect items.\n"
+                    "Selected items will be excluded from extraction.",
                     classes="hint"
                 ),
                 id="exclusions_container"
             ), id="exclusions_tab")
 
+            # Allowed Extensions & Folders Tab
+            yield TabPane("Allowed Extensions & Folders", VerticalScroll(
+                Label("Allowed Extensions & Files", classes="header"),
+                Static(
+                    "Select which file extensions and specific filenames to include in extraction. "
+                    "All items start as [bold]selected[/bold] (allowed). "
+                    "Press Space to toggle selection.",
+                    classes="hint"
+                ),
+                Static(),
+                # Web & General extensions
+                Label("Web & General", classes="group-header"),
+                SelectionList(
+                    (".php - PHP", ".php", True),
+                    (".html - HTML", ".html", True),
+                    (".css - CSS", ".css", True),
+                    (".js - JavaScript", ".js", True),
+                    (".jsx - React JSX", ".jsx", True),
+                    (".ts - TypeScript", ".ts", True),
+                    (".tsx - TypeScript JSX", ".tsx", True),
+                    (".vue - Vue.js", ".vue", True),
+                    (".svelte - Svelte", ".svelte", True),
+                    (".py - Python", ".py", True),
+                    (".rb - Ruby", ".rb", True),
+                    (".java - Java", ".java", True),
+                    (".c - C", ".c", True),
+                    (".cpp - C++", ".cpp", True),
+                    (".cs - C#", ".cs", True),
+                    (".go - Go", ".go", True),
+                    (".rs - Rust", ".rs", True),
+                    (".json - JSON", ".json", True),
+                    (".xml - XML", ".xml", True),
+                    (".yaml - YAML", ".yaml", True),
+                    (".yml - YAML", ".yml", True),
+                    (".toml - TOML", ".toml", True),
+                    (".ini - INI config", ".ini", True),
+                    (".conf - Config files", ".conf", True),
+                    (".md - Markdown", ".md", True),
+                    (".txt - Text", ".txt", True),
+                    (".rst - reStructuredText", ".rst", True),
+                    (".twig - Twig template", ".twig", True),
+                    (".blade - Blade template", ".blade", True),
+                    (".handlebars - Handlebars", ".handlebars", True),
+                    (".mustache - Mustache", ".mustache", True),
+                    (".ejs - EJS template", ".ejs", True),
+                    (".sql - SQL", ".sql", True),
+                    (".graphql - GraphQL", ".graphql", True),
+                    (".gql - GraphQL", ".gql", True),
+                    (".tf - Terraform", ".tf", True),
+                    id="web_general_extensions_list",
+                ),
+                Static(),
+                # Flutter/Mobile extensions
+                Label("Flutter / Dart / Mobile", classes="group-header"),
+                SelectionList(
+                    (".dart - Dart", ".dart", True),
+                    (".arb - ARB resource file", ".arb", True),
+                    (".gradle - Gradle", ".gradle", True),
+                    (".properties - Properties file", ".properties", True),
+                    (".plist - Property list (iOS)", ".plist", True),
+                    (".xcconfig - Xcode config", ".xcconfig", True),
+                    id="mobile_extensions_list",
+                ),
+                Static(),
+                # Script extensions
+                Label("Scripts", classes="group-header"),
+                SelectionList(
+                    (".sh - Shell script", ".sh", True),
+                    (".bat - Batch script", ".bat", True),
+                    id="script_extensions_list",
+                ),
+                Static(),
+                # Allowed filenames
+                Label("Allowed Filenames", classes="group-header"),
+                SelectionList(
+                    ("dockerfile - Docker config", "dockerfile", True),
+                    (".gitignore - Git ignore file", ".gitignore", True),
+                    (".htaccess - Apache config", ".htaccess", True),
+                    ("makefile - Make build file", "makefile", True),
+                    (".dockerignore - Docker ignore", ".dockerignore", True),
+                    (".env.example - Environment template", ".env.example", True),
+                    ("podfile - CocoaPods config", "podfile", True),
+                    ("gemfile - Ruby gems", "gemfile", True),
+                    ("jenkinsfile - Jenkins config", "jenkinsfile", True),
+                    ("gradlew - Gradle wrapper", "gradlew", True),
+                    id="allowed_filenames_list",
+                ),
+                Static(),
+                Static(
+                    "Use Space to select/deselect items.\n"
+                    "Selected items will be included in extraction.",
+                    classes="hint"
+                ),
+                id="allowed_container"
+            ), id="allowed_tab")
+
             # Tree Tab (placeholder - Phase 3)
-            yield TabPane("Tree", Vertical(
+            yield TabPane("Tree", VerticalScroll(
                 Label("Folder Selection", classes="header"),
                 Static(),
                 Static(
@@ -288,35 +429,70 @@ class CodebaseExtractorApp(App):
                 pass
 
     def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
-        """Handle SelectionList selection changes (excluded folders)."""
-        # The SelectionList.SelectedChanged message gives us access to the selection_list
-        # We need to check which items are selected and update session.excluded_dirs
+        """Handle SelectionList selection changes (excluded folders/files, allowed extensions)."""
         selection_list = event.selection_list
-
-        # Get all selected values (folder names) from this selection list
         selected_values = selection_list.selected
 
-        # Map SelectionList IDs to folder prefixes for matching
+        # Map SelectionList IDs to their items
         list_id = selection_list.id
-        folder_map = {
-            "std_exclusions_list": ["node_modules", "vendor", "__pycache__", "dist", "build", ".git", "venv"],
-            "flutter_exclusions_list": [".dart_tool", ".gradle", "Pods", "DerivedData"],
-            "build_exclusions_list": [".next", "target", ".cache", "tsconfig.tsbuildinfo"],
+        item_map = {
+            # Excluded Directories
+            "pkg_exclusions_list": ("excluded_dirs", ["node_modules", "vendor", "__pycache__", "dist", "build", "target", ".next"]),
+            "vcs_exclusions_list": ("excluded_dirs", [".git", ".svn", ".hg"]),
+            "venv_exclusions_list": ("excluded_dirs", ["venv", ".venv"]),
+            "ide_exclusions_list": ("excluded_dirs", [".vscode", ".idea"]),
+            "flutter_exclusions_list": ("excluded_dirs", [".dart_tool", ".gradle", "Pods", "DerivedData"]),
+            # Excluded Filenames
+            "lock_files_list": ("excluded_filenames", ["package-lock.json", "yarn.lock", "composer.lock", "Podfile.lock"]),
+            "config_files_list": ("excluded_filenames", [".env"]),
+            # Allowed Extensions
+            "web_general_extensions_list": ("allowed_extensions", [
+                ".php", ".html", ".css", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte",
+                ".py", ".rb", ".java", ".c", ".cpp", ".cs", ".go", ".rs", ".json", ".xml",
+                ".yaml", ".yml", ".toml", ".ini", ".conf", ".md", ".txt", ".rst", ".twig",
+                ".blade", ".handlebars", ".mustache", ".ejs", ".sql", ".graphql", ".gql", ".tf",
+            ]),
+            "mobile_extensions_list": ("allowed_extensions", [".dart", ".arb", ".gradle", ".properties", ".plist", ".xcconfig"]),
+            "script_extensions_list": ("allowed_extensions", [".sh", ".bat"]),
+            # Allowed Filenames
+            "allowed_filenames_list": ("allowed_filenames", [
+                "dockerfile", ".gitignore", ".htaccess", "makefile", ".dockerignore",
+                ".env.example", "podfile", "gemfile", "jenkinsfile", "gradlew",
+            ]),
         }
 
-        # Get the expected folder names for this list
-        expected_folders = folder_map.get(list_id, [])
+        if list_id not in item_map:
+            return
 
-        # Update session.excluded_dirs: add selected items, remove unselected items
-        for folder in expected_folders:
-            if folder in selected_values:
-                if folder not in self.session.excluded_dirs:
-                    self.session.excluded_dirs.add(folder)
-                    self.log(f"[red]Excluded:[/red] {folder}")
+        session_attr, expected_items = item_map[list_id]
+
+        # Get the session set to update
+        if session_attr == "excluded_dirs":
+            session_set = self.session.excluded_dirs
+            label_prefix = "Excluded dir"
+        elif session_attr == "excluded_filenames":
+            session_set = self.session.excluded_filenames
+            label_prefix = "Excluded file"
+        elif session_attr == "allowed_extensions":
+            session_set = self.session.allowed_extensions
+            label_prefix = "Allowed extension"
+        else:  # allowed_filenames
+            session_set = self.session.allowed_filenames
+            label_prefix = "Allowed filename"
+
+        # Update session based on selection
+        for item in expected_items:
+            is_selected = item in selected_values
+            if is_selected:
+                if item not in session_set:
+                    session_set.add(item)
+                    color = "red" if "excluded" in label_prefix else "green"
+                    self.log(f"[{color}]{label_prefix}:[/{color}] {item}")
             else:
-                if folder in self.session.excluded_dirs:
-                    self.session.excluded_dirs.discard(folder)
-                    self.log(f"[green]Included:[/green] {folder}")
+                if item in session_set:
+                    session_set.discard(item)
+                    color = "green" if "excluded" in label_prefix else "red"
+                    self.log(f"[{color}]Not {label_prefix}:[/{color}] {item}")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
