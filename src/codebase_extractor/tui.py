@@ -6,7 +6,7 @@ This is a placeholder implementation - actual functionality will be added in lat
 """
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, TabbedContent, TabPane, Static, Button
+from textual.widgets import Header, Footer, TabbedContent, TabPane, Static
 
 
 class CodebaseExtractorApp(App):
@@ -18,8 +18,8 @@ class CodebaseExtractorApp(App):
     def compose(self) -> ComposeResult:
         """Compose the UI."""
         yield Header()
-        yield TabbedContent(
-            TabPane("Settings", Static(
+        with TabbedContent(id="main_tabs"):
+            yield TabPane("Settings", Static(
                 "\n\n"
                 "  ╔═══════════════════════════════════════════════════════════╗\n"
                 "  ║                    SETTINGS TAB                            ║\n"
@@ -34,8 +34,8 @@ class CodebaseExtractorApp(App):
                 "  ║  - Instructions toggle                                      ║\n"
                 "  ║                                                             ║\n"
                 "  ╚═══════════════════════════════════════════════════════════╝\n"
-            ), id="settings_tab"),
-            TabPane("Extensions", Static(
+            ), id="settings_tab")
+            yield TabPane("Extensions", Static(
                 "\n\n"
                 "  ╔═══════════════════════════════════════════════════════════╗\n"
                 "  ║                   EXTENSIONS TAB                          ║\n"
@@ -48,8 +48,8 @@ class CodebaseExtractorApp(App):
                 "  ║  - Preset profiles for different project types              ║\n"
                 "  ║                                                             ║\n"
                 "  ╚═══════════════════════════════════════════════════════════╝\n"
-            ), id="extensions_tab"),
-            TabPane("Tree", Static(
+            ), id="extensions_tab")
+            yield TabPane("Tree", Static(
                 "\n\n"
                 "  ╔═══════════════════════════════════════════════════════════╗\n"
                 "  ║                      TREE TAB                              ║\n"
@@ -63,9 +63,7 @@ class CodebaseExtractorApp(App):
                 "  ║  - Progress bar during extraction                           ║\n"
                 "  ║                                                             ║\n"
                 "  ╚═══════════════════════════════════════════════════════════╝\n"
-            ), id="tree_tab"),
-            id="main_tabs",
-        )
+            ), id="tree_tab")
         yield Footer()
 
 
