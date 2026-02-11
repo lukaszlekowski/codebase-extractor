@@ -13,10 +13,9 @@ from typing import Set
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, Container
-from textual.css.query import NoMatches
 from textual.widgets import (
     Header, Footer, TabbedContent, TabPane, Static,
-    Switch, Input, Checkbox, Label, Tree, Button, RadioSet, RadioButton
+    Switch, Input, Label, Button, RadioSet, RadioButton, SelectionList
 )
 
 # Import from our modules
@@ -35,73 +34,16 @@ class ExtractionSession:
     include_root_files: bool = False
 
     # Excluded directories (user-configurable)
-    excluded_dirs: Set[str] = field(default_factory=lambda: set(config.EXCLUDED_DIRS))
+    # Default to all standard exclusions being selected
+    excluded_dirs: Set[str] = field(default_factory=lambda: set([
+        "node_modules", "vendor", "__pycache__", "dist", "build", ".git", "venv",
+        ".dart_tool", ".gradle", "Pods", "DerivedData",
+        ".next", "target", ".cache", "tsconfig.tsbuildinfo",
+    ]))
 
     def get_excluded_dirs(self) -> Set[str]:
         """Get excluded directories based on user configuration."""
         return self.excluded_dirs
-
-
-class ExclusionTree(Tree):
-    """A tree widget for exclusion configuration."""
-
-    def __init__(self, session: ExtractionSession, **kwargs):
-        """Initialize the exclusion tree."""
-        self.session = session
-        super().__init__("Exclusions", **kwargs)
-        self.show_root = False
-        self.guide_depth = 2
-
-    def on_mount(self) -> None:
-        """Build the tree when mounted."""
-        # Standard exclusions group
-        standard_node = self.root.add("Standard Exclusions")
-        standard_node.expand()
-        self._add_exclusion_item(standard_node, "node_modules", "JS/Node dependencies")
-        self._add_exclusion_item(standard_node, "vendor", "PHP/Composer dependencies")
-        self._add_exclusion_item(standard_node, "__pycache__", "Python bytecode cache")
-        self._add_exclusion_item(standard_node, "dist", "Distribution/build output")
-        self._add_exclusion_item(standard_node, "build", "Build artifacts")
-        self._add_exclusion_item(standard_node, ".git", "Git repository data")
-        self._add_exclusion_item(standard_node, "venv/.venv", "Python virtual environments")
-
-        # Flutter/Mobile exclusions group
-        flutter_node = self.root.add("Flutter/Mobile")
-        flutter_node.expand()
-        self._add_exclusion_item(flutter_node, ".dart_tool", "Dart build configuration")
-        self._add_exclusion_item(flutter_node, ".gradle", "Android Gradle cache")
-        self._add_exclusion_item(flutter_node, "Pods", "iOS CocoaPods dependencies")
-        self._add_exclusion_item(flutter_node, "DerivedData", "Xcode build artifacts")
-
-        # Build/Cache exclusions group
-        build_node = self.root.add("Build/Cache")
-        build_node.expand()
-        self._add_exclusion_item(build_node, ".next", "Next.js build cache")
-        self._add_exclusion_item(build_node, "target", "Rust/Cargo build output")
-        self._add_exclusion_item(build_node, ".cache", "Generic cache directory")
-        self._add_exclusion_item(build_node, "tsconfig.tsbuildinfo", "TypeScript incremental build")
-
-    def _add_exclusion_item(self, parent, folder: str, description: str) -> None:
-        """Add an exclusion item as a tree node."""
-        label = f"{folder}  [dim]{description}[/dim]" if description else folder
-        parent.add_leaf(label, data=folder)
-
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Handle node selection - toggle exclusion status."""
-        node = event.node
-        if node.data:
-            folder = node.data
-            # Toggle exclusion status
-            if folder in self.session.excluded_dirs:
-                self.session.excluded_dirs.discard(folder)
-                # Remove checkmark from label
-                base_label = str(node.label).replace("[green]✓[/green] ", "")
-                node.set_label(base_label)
-            else:
-                self.session.excluded_dirs.add(folder)
-                # Add checkmark to label
-                node.set_label(f"[green]✓[/green] {node.label}")
-            self.log(f"{'Excluded' if folder in self.session.excluded_dirs else 'Included'}: {folder}")
 
 
 class CodebaseExtractorApp(App):
@@ -112,7 +54,6 @@ class CodebaseExtractorApp(App):
     BINDINGS = [
         Binding("ctrl+r", "run_extraction", "Run"),
         Binding("q", "app.quit", "Quit"),
-        Binding("space", "toggle_selection", "Toggle", show=False),
     ]
 
     CSS = """
@@ -121,7 +62,7 @@ class CodebaseExtractorApp(App):
     }
 
     .section-border {
-        border: solid cyan;
+        border: round cyan;
         padding: 1;
         margin: 1 0;
     }
@@ -140,6 +81,24 @@ class CodebaseExtractorApp(App):
         align: center middle;
         height: 3;
     }
+
+    .exclusions-container {
+        padding: 0 2;
+    }
+
+    .exclusion-group {
+        border: round cyan;
+        padding: 1;
+        margin: 1 0;
+    }
+
+    .group-header {
+        text-style: bold;
+    }
+
+    Checkbox {
+        margin: 0 0 0 0;
+    }
     """
 
     def __init__(self, **kwargs):
@@ -147,13 +106,6 @@ class CodebaseExtractorApp(App):
         super().__init__(**kwargs)
         self.session = ExtractionSession()
         self.root_path = Path.cwd()
-
-    def on_mount(self) -> None:
-        """Set up the UI after mounting."""
-        # Set border titles for sections
-        self.query_one("#output_dir_section").border_title = "Output Directory"
-        self.query_one("#large_file_section").border_title = "Large File Exclusion"
-        self.query_one("#dry_run_section").border_title = "Dry-run Execution Mode (design for testing purposes)"
 
     def compose(self) -> ComposeResult:
         """Compose the UI."""
@@ -226,23 +178,56 @@ class CodebaseExtractorApp(App):
                 id="settings_container"
             ), id="settings_tab")
 
-            # Extensions Tab with tree view
-            yield TabPane("Extensions", Vertical(
-                Label("Folders to Exclude", classes="header"),
+            # Exclusions Tab with SelectionLists
+            yield TabPane("Exclusions", Vertical(
+                Label("Folder Exclusions", classes="header"),
                 Static(
                     "Select folders to exclude from extraction. "
-                    "[green]✓[/green] = excluded, click to toggle.",
+                    "All items start as [bold]selected[/bold] (excluded). "
+                    "Press Space to toggle selection.",
                     classes="hint"
                 ),
-                ExclusionTree(self.session, id="exclusion_tree"),
+                Static(),
+                # Standard exclusions
+                Label("Standard", classes="group-header"),
+                SelectionList(
+                    ("node_modules - JS/Node dependencies", "node_modules", True),
+                    ("vendor - PHP/Composer dependencies", "vendor", True),
+                    ("__pycache__ - Python bytecode cache", "__pycache__", True),
+                    ("dist - Distribution/build output", "dist", True),
+                    ("build - Build artifacts", "build", True),
+                    (".git - Git repository data", ".git", True),
+                    ("venv/.venv - Python virtual environments", "venv", True),
+                    id="std_exclusions_list",
+                ),
+                Static(),
+                # Flutter/Mobile exclusions
+                Label("Flutter/Mobile", classes="group-header"),
+                SelectionList(
+                    (".dart_tool - Dart build configuration", ".dart_tool", True),
+                    (".gradle - Android Gradle cache", ".gradle", True),
+                    ("Pods - iOS CocoaPods dependencies", "Pods", True),
+                    ("DerivedData - Xcode build artifacts", "DerivedData", True),
+                    id="flutter_exclusions_list",
+                ),
+                Static(),
+                # Build/Cache exclusions
+                Label("Build/Cache", classes="group-header"),
+                SelectionList(
+                    (".next - Next.js build cache", ".next", True),
+                    ("target - Rust/Cargo build output", "target", True),
+                    (".cache - Generic cache directory", ".cache", True),
+                    ("tsconfig.tsbuildinfo - TypeScript incremental build", "tsconfig.tsbuildinfo", True),
+                    id="build_exclusions_list",
+                ),
                 Static(),
                 Static(
-                    "Press [b]Space[/b] to toggle selection on highlighted item.\n"
-                    "Press [b]Enter[/b] or [b]→/←[/b] to expand/collapse groups.",
+                    "Use Space to select/deselect folders.\n"
+                    "Selected folders will be excluded from extraction.",
                     classes="hint"
                 ),
-                id="extensions_container"
-            ), id="extensions_tab")
+                id="exclusions_container"
+            ), id="exclusions_tab")
 
             # Tree Tab (placeholder - Phase 3)
             yield TabPane("Tree", Vertical(
@@ -270,6 +255,13 @@ class CodebaseExtractorApp(App):
             ), id="tree_tab")
         yield Footer()
 
+    def on_mount(self) -> None:
+        """Set up the UI after mounting."""
+        # Set border titles for Settings sections
+        self.query_one("#output_dir_section").border_title = "Output Directory"
+        self.query_one("#large_file_section").border_title = "Large File Exclusion"
+        self.query_one("#dry_run_section").border_title = "Dry-run Execution Mode (design for testing purposes)"
+
     def on_switch_changed(self, event: Switch.Changed) -> None:
         """Handle switch toggle changes."""
         if event.switch.id == "exclude_large_switch":
@@ -295,28 +287,43 @@ class CodebaseExtractorApp(App):
             except ValueError:
                 pass
 
+    def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
+        """Handle SelectionList selection changes (excluded folders)."""
+        # The SelectionList.SelectedChanged message gives us access to the selection_list
+        # We need to check which items are selected and update session.excluded_dirs
+        selection_list = event.selection_list
+
+        # Get all selected values (folder names) from this selection list
+        selected_values = selection_list.selected
+
+        # Map SelectionList IDs to folder prefixes for matching
+        list_id = selection_list.id
+        folder_map = {
+            "std_exclusions_list": ["node_modules", "vendor", "__pycache__", "dist", "build", ".git", "venv"],
+            "flutter_exclusions_list": [".dart_tool", ".gradle", "Pods", "DerivedData"],
+            "build_exclusions_list": [".next", "target", ".cache", "tsconfig.tsbuildinfo"],
+        }
+
+        # Get the expected folder names for this list
+        expected_folders = folder_map.get(list_id, [])
+
+        # Update session.excluded_dirs: add selected items, remove unselected items
+        for folder in expected_folders:
+            if folder in selected_values:
+                if folder not in self.session.excluded_dirs:
+                    self.session.excluded_dirs.add(folder)
+                    self.log(f"[red]Excluded:[/red] {folder}")
+            else:
+                if folder in self.session.excluded_dirs:
+                    self.session.excluded_dirs.discard(folder)
+                    self.log(f"[green]Included:[/green] {folder}")
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "run_button":
             self.action_run_extraction()
         elif event.button.id == "quit_button":
             self.exit()
-
-    def action_toggle_selection(self) -> None:
-        """Toggle selection on the currently highlighted tree node."""
-        tree = self.query_one("#exclusion_tree", ExclusionTree)
-        if tree.cursor_node and tree.cursor_node.data:
-            # Directly toggle the exclusion for the current node
-            node = tree.cursor_node
-            folder = node.data
-            if folder in self.session.excluded_dirs:
-                self.session.excluded_dirs.discard(folder)
-                base_label = str(node.label).replace("[green]✓[/green] ", "")
-                node.set_label(base_label)
-            else:
-                self.session.excluded_dirs.add(folder)
-                node.set_label(f"[green]✓[/green] {node.label}")
-            self.log(f"{'Excluded' if folder in self.session.excluded_dirs else 'Included'}: {folder}")
 
     def action_run_extraction(self) -> None:
         """Handle the run extraction action."""
