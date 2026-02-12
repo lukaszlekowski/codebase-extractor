@@ -12,7 +12,7 @@ OUTPUT_DIR_NAME = "CODEBASE_EXTRACTS"
 EXCLUDED_DIRS = {
     # Standard exclusions
     "node_modules", "vendor", "__pycache__", "dist", "build", "target", ".next",
-    ".git", ".svn", ".hg", ".vscode", ".idea", "venv", ".venv", ".dart_tool",
+    ".git", ".svn", ".hg", ".vscode", ".idea", "venv", ".venv",
     # Flutter & Mobile specific exclusions
     ".dart_tool",  # Critical: Contains noisy build config
     ".gradle",     # Internal Gradle cache

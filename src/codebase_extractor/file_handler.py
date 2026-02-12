@@ -56,39 +56,89 @@ def get_folder_choices(root_path: Path, max_depth: int) -> list:
     return choices
 
 
-def is_allowed_file(path: Path, exclude_large: bool) -> bool:
-    """Checks if a file should be included based on its name, extension, and size."""
+def is_allowed_file(
+    path: Path,
+    exclude_large: bool,
+    max_file_size_mb: float = config.MAX_FILE_SIZE_MB,
+    excluded_filenames: set = None,
+    allowed_filenames: set = None,
+    allowed_extensions: set = None,
+) -> bool:
+    """
+    Checks if a file should be included based on its name, extension, and size.
+
+    Args:
+        path: Path to the file to check
+        exclude_large: Whether to exclude large files
+        max_file_size_mb: Maximum file size in MB (default from config)
+        excluded_filenames: Set of filenames to exclude (default from config)
+        allowed_filenames: Set of filenames to always allow (default from config)
+        allowed_extensions: Set of extensions to allow (default from config)
+
+    Returns:
+        True if the file should be included, False otherwise
+    """
+    if excluded_filenames is None:
+        excluded_filenames = config.EXCLUDED_FILENAMES
+    if allowed_filenames is None:
+        allowed_filenames = config.ALLOWED_FILENAMES
+    if allowed_extensions is None:
+        allowed_extensions = config.ALLOWED_EXTENSIONS
+
     if path.name == config.SCRIPT_FILENAME:
         return False
-    if path.name.lower() in config.ALLOWED_FILENAMES:
+    if path.name.lower() in allowed_filenames:
         return True
     if not path.is_file():
         return False
-    if path.name.lower() in config.EXCLUDED_FILENAMES:
+    if path.name.lower() in excluded_filenames:
         return False
-    if path.suffix.lower() not in config.ALLOWED_EXTENSIONS:
+    if path.suffix.lower() not in allowed_extensions:
         return False
-    if exclude_large and path.stat().st_size > config.MAX_FILE_SIZE_MB * 1024 * 1024:
+    if exclude_large and path.stat().st_size > max_file_size_mb * 1024 * 1024:
         return False
     return True
 
 
-def extract_code_from_folder(folder: Path, exclude_large: bool) -> tuple[str, int, int, int]:
+def extract_code_from_folder(
+    folder: Path,
+    exclude_large: bool,
+    excluded_dirs: set = None,
+    max_file_size_mb: float = config.MAX_FILE_SIZE_MB,
+    excluded_filenames: set = None,
+    allowed_filenames: set = None,
+    allowed_extensions: set = None,
+) -> tuple[str, int, int, int]:
     """
     Extracts code from a given folder, respecting EXCLUDED_DIRS at all depths.
-    
+
+    Args:
+        folder: Path to the folder to extract from
+        exclude_large: Whether to exclude large files
+        excluded_dirs: Set of directory names to exclude (default from config)
+        max_file_size_mb: Maximum file size in MB (default from config)
+        excluded_filenames: Set of filenames to exclude (default from config)
+        allowed_filenames: Set of filenames to always allow (default from config)
+        allowed_extensions: Set of extensions to allow (default from config)
+
     Returns:
         A tuple containing the content string, file count, char count, and word count.
     """
+    if excluded_dirs is None:
+        excluded_dirs = config.EXCLUDED_DIRS
+
     content = f"# Folder: {folder.relative_to(Path.cwd())}\n\n"
     extracted_files = 0
     dirs_to_visit = [folder]
     while dirs_to_visit:
         current_dir = dirs_to_visit.pop(0)
         for item in sorted(current_dir.iterdir()):
-            if item.is_dir() and item.name not in config.EXCLUDED_DIRS:
+            if item.is_dir() and item.name not in excluded_dirs:
                 dirs_to_visit.append(item)
-            elif item.is_file() and is_allowed_file(item, exclude_large):
+            elif item.is_file() and is_allowed_file(
+                item, exclude_large, max_file_size_mb,
+                excluded_filenames, allowed_filenames, allowed_extensions
+            ):
                 try:
                     rel_path = item.relative_to(Path.cwd())
                     ext = item.suffix
@@ -102,25 +152,43 @@ def extract_code_from_folder(folder: Path, exclude_large: bool) -> tuple[str, in
                     content += f"\n\n"
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
         logging.warning(colored(f"> Caution: Large file count in '{folder.name}' ({extracted_files} files).", "yellow"))
-    
+
     # ADDED: Calculate character and word counts
     char_count = len(content)
     word_count = len(content.split())
-    
+
     return content, extracted_files, char_count, word_count
 
 
-def extract_code_from_root(root_path: Path, exclude_large: bool) -> tuple[str, int, int, int]:
+def extract_code_from_root(
+    root_path: Path,
+    exclude_large: bool,
+    max_file_size_mb: float = config.MAX_FILE_SIZE_MB,
+    excluded_filenames: set = None,
+    allowed_filenames: set = None,
+    allowed_extensions: set = None,
+) -> tuple[str, int, int, int]:
     """
     Extracts code only from files present in the root directory.
-    
+
+    Args:
+        root_path: Path to the root directory
+        exclude_large: Whether to exclude large files
+        max_file_size_mb: Maximum file size in MB (default from config)
+        excluded_filenames: Set of filenames to exclude (default from config)
+        allowed_filenames: Set of filenames to always allow (default from config)
+        allowed_extensions: Set of extensions to allow (default from config)
+
     Returns:
         A tuple containing the content string, file count, char count, and word count.
     """
     content = f"# Root Files: {root_path.name}\n\n"
     extracted_files = 0
     for filepath in sorted(root_path.iterdir()):
-        if filepath.is_file() and is_allowed_file(filepath, exclude_large):
+        if filepath.is_file() and is_allowed_file(
+            filepath, exclude_large, max_file_size_mb,
+            excluded_filenames, allowed_filenames, allowed_extensions
+        ):
             ext = filepath.suffix
             lang = config.EXTENSION_LANG_MAP.get(ext, "")
             content += f"## {filepath.name}\n\n```{lang}\n"
@@ -129,7 +197,7 @@ def extract_code_from_root(root_path: Path, exclude_large: bool) -> tuple[str, i
             extracted_files += 1
     if extracted_files > config.FILE_COUNT_WARNING_THRESHOLD:
         logging.warning(colored(f"> Caution: Large file count in root ({extracted_files} files).", "yellow"))
-    
+
     # ADDED: Calculate character and word counts
     char_count = len(content)
     word_count = len(content.split())
