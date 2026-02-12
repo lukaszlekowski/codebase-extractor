@@ -10,15 +10,16 @@ The tool supports:
 
 - Interactive wizard mode (Questionary prompts).
 - Fully non-interactive automation via CLI flags (`--mode`, `--select-folders`, `--select-root`, etc.).
-- Filtering rules for excluded directories, excluded filenames, allowed filenames, allowed extensions, and an optional “exclude files larger than 1MB” setting.
+- Filtering rules for excluded directories, excluded filenames, allowed filenames, allowed extensions, and an optional "exclude files larger than 1MB" setting.
 
-## Documentation system (RPI)
+## Workflow & Protocols (Authoritative)
 
-We use an RPI-style workflow:
+**CRITICAL:** Before starting any task, read **`docs/00_prompts/00-stages-rpi.md`**.
 
-- Research outputs live in `docs/1_research/` (date-stamped). (Create if missing.)
-- Plans live in `docs/2_plans/` (date-stamped). (Create if missing.)
-- Keep research factual; keep plans phase-based and checkable.
+This directory contains the strict protocols for:
+1.  **Stage Selection**: When to use Research vs Spec vs Plan.
+2.  **Execution**: How to run the Implementation -> Review loop.
+3.  **Handoff**: How to switch agents/models safely (`docs/00_prompts/50-handoff-model-switch.md`).
 
 ## Workflow requirements (non-negotiable)
 
@@ -28,7 +29,7 @@ We use an RPI-style workflow:
 2. **Phase-by-phase implementation**
    - Implement exactly one phase at a time.
    - After each phase: run verification commands and report results.
-   - Do not skip ahead “because it’s easy.”
+   - Do not skip ahead "because it’s easy."
 
 3. **Small, reviewable commits**
    - Keep commits scoped to one phase or one coherent change.
@@ -37,19 +38,37 @@ We use an RPI-style workflow:
 4. **No unnecessary dependency changes**
    - Adding new dependencies requires a brief justification and approval first.
 
+## Template usage requirements
+
+When creating or updating project docs, follow the stage guides in `docs/00_prompts/` to determine which templates are required.
+
+Canonical templates:
+
+- Research: `docs/10_research/_research-template.md`
+- Plan: `docs/20_plans/_plan-template.md`
+- MVP spec: `docs/15_specs/_mvp-template.md` (Optional; see `15-spec-stage.md` for skip logic)
+- ADR: `docs/25_adr/_adr-template.md`
+
+Required quality bar:
+
+- Frontmatter keys use snake_case.
+- Cross-doc links use canonical paths (`docs/10_research`, `docs/20_plans`, `docs/15_specs`, `docs/25_adr`).
+- Plans must be decision-complete before implementation (no high-impact TBDs).
+- Each phase in a plan must include executable verification commands and expected outcomes.
+
 ## Current architecture (where to look)
 
 Core modules:
 
-- `src/codebaseextractor/mainlogic.py`: the CLI entrypoint/orchestration, prompt flow, and the extraction loop.
-- `src/codebaseextractor/filehandler.py`: folder-choice generation for the wizard, filtering, extraction, and markdown output writing.
-- `src/codebaseextractor/config.py`: default allow/deny lists, extension-to-language map, thresholds.
-- `src/codebaseextractor/cli.py`: argument parsing (interactive vs automated flags).
-- `src/codebaseextractor/ui.py`: banner/instructions output for the wizard.
+- `src/codebase_extractor/main_logic.py`: the CLI entrypoint/orchestration, prompt flow, and the extraction loop.
+- `src/codebase_extractor/file_handler.py`: folder-choice generation for the wizard, filtering, extraction, and markdown output writing.
+- `src/codebase_extractor/config.py`: default allow/deny lists, extension-to-language map, thresholds.
+- `src/codebase_extractor/cli.py`: argument parsing (interactive vs automated flags).
+- `src/codebase_extractor/ui.py`: banner/instructions output for the wizard.
 
 Important behavior to preserve:
 
-- “Specific selection” wizard builds a visual tree list and supports a ROOT sentinel option for “root files only.”
+- "Specific selection" wizard builds a visual tree list and supports a ROOT sentinel option for "root files only."
 - Non-interactive mode must remain stable for automation.
 
 ## Coding standards
@@ -63,7 +82,7 @@ Important behavior to preserve:
 To run the tool (for testing or development), use the venv:
 
 ```bash
-./venv/bin/python -m src.codebase_extractor.main_logic [args]
+./venv/bin/python -m codebase_extractor.main_logic [args]
 ```
 
 ## Verification (run as relevant after each phase)
@@ -77,8 +96,10 @@ At minimum, verify:
 
 If a phase touches filtering/extraction, also verify output structure:
 
-- Output directory behavior remains consistent (`CODEBASEEXTRACTS` default, customizable via `--output-dir`).
+- Output directory behavior remains consistent (`CODEBASE_EXTRACTS` default, customizable via `--output-dir`).
 - YAML header includes expected metadata fields (run reference, timestamp, folder name, file/char/word counts).
+
+**Closeout**: At the end of a task, you MUST update the status of all active Research/Plan/Spec docs (e.g., to `implemented` or `done`).
 
 ## Feature in progress: Textual TUI + progress bar
 
@@ -93,15 +114,14 @@ Key constraints:
 Implementation guidance:
 
 - Default behavior should remain the wizard unless a `--tui` flag is provided (safe rollout).
-- Reuse existing filtering and extraction functions from `filehandler.py` to avoid regressions.
+- Reuse existing filtering and extraction functions from `file_handler.py` to avoid regressions.
 
 ## How Claude should collaborate
 
 When asked to implement a feature:
 
-1. Identify which RPI docs apply (research/plan). If missing, draft them first.
-2. Propose the next _single phase_ you will implement and the exact files you expect to touch.
-3. Implement that phase only.
-4. Run verification commands and report outcomes + next phase suggestion.
+1.  **Read `docs/00_prompts/00-stages-rpi.md` first.**
+2.  Follow the flow described there (Research -> Plan -> Implement -> Review).
+3.  Use `50-handoff-model-switch.md` if you need to stop before completion.
 
 If anything is ambiguous (e.g., UX, defaults, config file format), stop and ask a question rather than guessing.
